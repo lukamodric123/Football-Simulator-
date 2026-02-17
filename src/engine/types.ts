@@ -9,25 +9,39 @@ export interface Player {
   position: Position;
   attributes: PlayerAttributes;
   hiddenTraits: HiddenTraits;
-  morale: number; // 0-100
-  form: number; // 0-100
-  fatigue: number; // 0-100 (100 = exhausted)
+  morale: number;
+  form: number;
+  fatigue: number;
   injured: boolean;
   injuryWeeks: number;
-  value: number; // in millions
-  wage: number; // weekly wage in thousands
+  value: number;
+  wage: number;
   goals: number;
   assists: number;
   appearances: number;
   yellowCards: number;
   redCards: number;
-  rating: number; // average match rating
-  potential: number; // max overall
+  rating: number;
+  potential: number;
   contractYears: number;
+  // V2 additions
+  careerGoals: number;
+  careerAssists: number;
+  careerAppearances: number;
+  trophies: number;
+  individualAwards: string[];
+  isLegend: boolean;
+  legendType?: LegendType;
+  retired: boolean;
+  retiredSeason?: number;
+  personalGoal: PersonalGoal;
+  seasonHistory: SeasonRecord[];
 }
 
-export type Position = 'GK' | 'CB' | 'LB' | 'RB' | 'CDM' | 'CM' | 'CAM' | 'LW' | 'RW' | 'ST';
+export type LegendType = 'playmaker' | 'scorer' | 'defender' | 'midfielder' | 'goalkeeper';
+export type PersonalGoal = 'money' | 'fame' | 'legacy' | 'loyalty' | 'playing_time' | 'international';
 
+export type Position = 'GK' | 'CB' | 'LB' | 'RB' | 'CDM' | 'CM' | 'CAM' | 'LW' | 'RW' | 'ST';
 export type PositionCategory = 'GK' | 'DEF' | 'MID' | 'FWD';
 
 export const positionToCategory = (pos: Position): PositionCategory => {
@@ -57,33 +71,48 @@ export interface HiddenTraits {
   workRate: number;
 }
 
+export interface SeasonRecord {
+  season: number;
+  teamId: string;
+  goals: number;
+  assists: number;
+  appearances: number;
+  rating: number;
+}
+
 export interface Team {
   id: string;
   name: string;
   shortName: string;
   leagueId: string;
-  reputation: number; // 1-100
-  budget: number; // in millions
+  reputation: number;
+  budget: number;
   squad: Player[];
   tactic: Tactic;
   fanMood: FanMood;
   personality: ClubPersonality;
-  color: string; // hex color
+  color: string;
+  // V2 additions
+  titles: number;
+  managerName: string;
+  managerStyle: ManagerStyle;
 }
 
 export type Tactic = 'possession' | 'counter' | 'pressing' | 'defensive' | 'balanced';
 export type FanMood = 'ecstatic' | 'happy' | 'neutral' | 'frustrated' | 'angry';
 export type ClubPersonality = 'big_spender' | 'youth_developer' | 'defensive' | 'attacking' | 'balanced';
+export type ManagerStyle = 'tactical_genius' | 'youth_developer' | 'defensive_master' | 'attacking_visionary' | 'motivator';
 
 export interface League {
   id: string;
   name: string;
   country: string;
-  teams: string[]; // team IDs
+  teams: string[];
   standings: Standing[];
   fixtures: Fixture[];
   currentMatchday: number;
   totalMatchdays: number;
+  champions: { season: number; teamId: string }[];
 }
 
 export interface Standing {
@@ -120,11 +149,34 @@ export interface NewsItem {
   id: string;
   headline: string;
   body: string;
-  category: 'transfer' | 'match' | 'injury' | 'award' | 'drama' | 'youth' | 'manager';
+  category: 'transfer' | 'match' | 'injury' | 'award' | 'drama' | 'youth' | 'manager' | 'goat' | 'legend' | 'retirement' | 'takeover';
   week: number;
   season: number;
-  importance: number; // 1-5
+  importance: number;
 }
+
+export interface GOATEntry {
+  playerId: string;
+  playerName: string;
+  score: number;
+  careerGoals: number;
+  careerAssists: number;
+  trophies: number;
+  awards: number;
+  peakOverall: number;
+  seasonsPlayed: number;
+  retired: boolean;
+}
+
+export interface AllTimeRecord {
+  type: 'goals' | 'assists' | 'appearances' | 'trophies';
+  playerId: string;
+  playerName: string;
+  value: number;
+  season: number;
+}
+
+export type GameMode = 'universe' | 'manager';
 
 export interface GameState {
   season: number;
@@ -137,6 +189,14 @@ export interface GameState {
   topScorers: { playerId: string; goals: number; leagueId: string }[];
   awards: Award[];
   initialized: boolean;
+  // V2 additions
+  gameMode: GameMode;
+  managedTeamId: string | null;
+  goatRankings: GOATEntry[];
+  allTimeRecords: AllTimeRecord[];
+  retiredPlayers: Player[];
+  seasonAwards: { season: number; awards: Award[] }[];
+  totalSeasonsPlayed: number;
 }
 
 export type GamePhase = 'pre_season' | 'in_season' | 'transfer_window' | 'end_season';
@@ -144,10 +204,12 @@ export type GamePhase = 'pre_season' | 'in_season' | 'transfer_window' | 'end_se
 export interface Award {
   name: string;
   playerId: string;
+  playerName?: string;
+  teamName?: string;
   season: number;
+  value?: number;
 }
 
-// League data definitions
 export interface LeagueDefinition {
   id: string;
   name: string;

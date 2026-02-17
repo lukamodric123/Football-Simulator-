@@ -9,6 +9,7 @@ export const FIRST_NAMES = [
   'Thibaut', 'Vini', 'Eder', 'Fede', 'Eduardo', 'Alphonso', 'Dayot', 'Aurelien', 'Warren',
   'Ousmane', 'Randal', 'Jonathan', 'Mike', 'Denzel', 'Cody', 'Memphis', 'Frenkie', 'Matthijs',
   'Stefan', 'Manuel', 'Leon', 'Ilkay', 'Mats', 'Robin', 'Dusan', 'Adrien', 'Achraf', 'Presnel',
+  'Tomas', 'Erik', 'Henrik', 'Ole', 'Pep', 'Zinedine', 'Cristiano', 'Lionel', 'Neymar', 'Zlatan',
 ];
 
 export const LAST_NAMES = [
@@ -20,6 +21,20 @@ export const LAST_NAMES = [
   'Berg', 'Lindberg', 'Johansson', 'Petrov', 'Ivanov', 'Popov', 'Kovac', 'Novak', 'Horvat',
   'Torres', 'Ramos', 'Moreno', 'Jimenez', 'Ruiz', 'Diaz', 'Alonso', 'Pires', 'Costa', 'Pereira',
   'Almeida', 'Ribeiro', 'Carvalho', 'Oliveira', 'Mendes', 'Ferreira', 'Gomes', 'Sousa', 'Lopes',
+  'Van Dijk', 'De Jong', 'De Bruyne', 'Mbappé', 'Haaland', 'Bellingham', 'Saka', 'Palmer',
+];
+
+export const MANAGER_FIRST_NAMES = [
+  'José', 'Pep', 'Carlo', 'Jürgen', 'Thomas', 'Zinedine', 'Diego', 'Massimiliano',
+  'Erik', 'Unai', 'Xavi', 'Luis', 'Simone', 'Mikel', 'Roberto', 'Mauricio',
+  'Antonio', 'Luciano', 'Nuno', 'Marco', 'Brendan', 'Ange', 'Patrick', 'Oliver',
+];
+
+export const MANAGER_LAST_NAMES = [
+  'Mourinho', 'Guardiola', 'Ancelotti', 'Klopp', 'Tuchel', 'Zidane', 'Simeone', 'Allegri',
+  'Ten Hag', 'Emery', 'Hernández', 'Enrique', 'Inzaghi', 'Arteta', 'De Zerbi', 'Pochettino',
+  'Conte', 'Spalletti', 'Espírito Santo', 'Rose', 'Rodgers', 'Postecoglou', 'Vieira', 'Glasner',
+  'Nagelsmann', 'Flick', 'Maresca', 'Slot', 'Silva', 'Sarri', 'Gattuso', 'Pirlo',
 ];
 
 export const NATIONALITIES = [
