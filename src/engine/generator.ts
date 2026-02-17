@@ -1,8 +1,8 @@
-import { Player, Team, Position, Tactic, ClubPersonality, PlayerAttributes, HiddenTraits } from './types';
-import { FIRST_NAMES, LAST_NAMES, NATIONALITIES } from './data';
+import { Player, Team, Position, Tactic, ClubPersonality, PlayerAttributes, HiddenTraits, PersonalGoal, ManagerStyle, LegendType } from './types';
+import { FIRST_NAMES, LAST_NAMES, NATIONALITIES, MANAGER_FIRST_NAMES, MANAGER_LAST_NAMES } from './data';
 
 let nextId = 1;
-const uid = () => `p${nextId++}`;
+export const uid = () => `p${nextId++}`;
 
 const rand = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
@@ -25,18 +25,10 @@ function generateAttributes(position: Position, reputation: number): PlayerAttri
   const vary = () => Math.min(99, Math.max(30, base + rand(-15, 15)));
 
   const attrs: PlayerAttributes = {
-    shooting: vary(),
-    passing: vary(),
-    dribbling: vary(),
-    pace: vary(),
-    defense: vary(),
-    physicality: vary(),
-    vision: vary(),
-    stamina: vary(),
-    positioning: vary(),
+    shooting: vary(), passing: vary(), dribbling: vary(), pace: vary(),
+    defense: vary(), physicality: vary(), vision: vary(), stamina: vary(), positioning: vary(),
   };
 
-  // Position-specific boosts
   if (position === 'GK') {
     attrs.positioning = Math.min(99, attrs.positioning + 15);
     attrs.physicality = Math.min(99, attrs.physicality + 10);
@@ -71,11 +63,32 @@ function generateHiddenTraits(): HiddenTraits {
   };
 }
 
-export function generatePlayer(position: Position, reputation: number, ageRange?: [number, number]): Player {
+const personalGoals: PersonalGoal[] = ['money', 'fame', 'legacy', 'loyalty', 'playing_time', 'international'];
+
+export function generatePlayer(position: Position, reputation: number, ageRange?: [number, number], isLegend?: boolean): Player {
   const age = ageRange ? rand(ageRange[0], ageRange[1]) : rand(18, 35);
-  const attrs = generateAttributes(position, reputation);
+  let attrs = generateAttributes(position, reputation);
+
+  // Legends get boosted attributes
+  if (isLegend) {
+    const keys = Object.keys(attrs) as (keyof PlayerAttributes)[];
+    for (const key of keys) {
+      attrs[key] = Math.min(99, attrs[key] + rand(8, 18));
+    }
+  }
+
   const overall = Math.round(Object.values(attrs).reduce((a, b) => a + b, 0) / 9);
-  const potential = Math.min(99, overall + rand(0, Math.max(0, 30 - (age - 18))));
+  const potential = isLegend
+    ? Math.min(99, overall + rand(5, 15))
+    : Math.min(99, overall + rand(0, Math.max(0, 30 - (age - 18))));
+
+  const legendTypes: LegendType[] = ['playmaker', 'scorer', 'defender', 'midfielder', 'goalkeeper'];
+  const legendType: LegendType | undefined = isLegend
+    ? position === 'GK' ? 'goalkeeper'
+    : ['CB', 'LB', 'RB'].includes(position) ? 'defender'
+    : ['LW', 'RW', 'ST'].includes(position) ? (Math.random() > 0.5 ? 'scorer' : 'playmaker')
+    : 'midfielder'
+    : undefined;
 
   return {
     id: uid(),
@@ -101,15 +114,29 @@ export function generatePlayer(position: Position, reputation: number, ageRange?
     rating: 0,
     potential,
     contractYears: rand(1, 5),
+    careerGoals: 0,
+    careerAssists: 0,
+    careerAppearances: 0,
+    trophies: 0,
+    individualAwards: [],
+    isLegend: isLegend || false,
+    legendType,
+    retired: false,
+    personalGoal: pick(personalGoals),
+    seasonHistory: [],
   };
 }
 
 export function generateSquad(reputation: number): Player[] {
   const squad: Player[] = [];
+  // Small chance of a legend appearing
+  const legendChance = reputation > 85 ? 0.08 : 0.02;
+
   for (const pw of positionWeights) {
     for (let i = 0; i < pw.count; i++) {
       const ageRange: [number, number] = i === 0 ? [22, 30] : [18, 34];
-      squad.push(generatePlayer(pw.pos, reputation, ageRange));
+      const isLegend = Math.random() < legendChance && i === 0;
+      squad.push(generatePlayer(pw.pos, reputation, ageRange, isLegend));
     }
   }
   return squad;
@@ -117,6 +144,11 @@ export function generateSquad(reputation: number): Player[] {
 
 const tactics: Tactic[] = ['possession', 'counter', 'pressing', 'defensive', 'balanced'];
 const personalities: ClubPersonality[] = ['big_spender', 'youth_developer', 'defensive', 'attacking', 'balanced'];
+const managerStyles: ManagerStyle[] = ['tactical_genius', 'youth_developer', 'defensive_master', 'attacking_visionary', 'motivator'];
+
+export function generateManagerName(): string {
+  return `${pick(MANAGER_FIRST_NAMES)} ${pick(MANAGER_LAST_NAMES)}`;
+}
 
 export function generateTeam(
   name: string,
@@ -138,6 +170,9 @@ export function generateTeam(
     fanMood: 'neutral',
     personality: reputation > 85 ? pick(['big_spender', 'attacking']) : pick(personalities),
     color,
+    titles: 0,
+    managerName: generateManagerName(),
+    managerStyle: pick(managerStyles),
   };
 }
 
@@ -149,7 +184,83 @@ export function getPlayerOverall(player: Player): number {
 export function getTeamOverall(team: Team): number {
   if (team.squad.length === 0) return 50;
   const best11 = [...team.squad]
+    .filter(p => !p.retired)
     .sort((a, b) => getPlayerOverall(b) - getPlayerOverall(a))
     .slice(0, 11);
-  return Math.round(best11.reduce((s, p) => s + getPlayerOverall(p), 0) / 11);
+  if (best11.length === 0) return 50;
+  return Math.round(best11.reduce((s, p) => s + getPlayerOverall(p), 0) / best11.length);
+}
+
+// Age players, develop young ones, decline old ones
+export function agePlayer(player: Player): Player {
+  const updated = { ...player };
+  updated.age += 1;
+  updated.contractYears = Math.max(0, updated.contractYears - 1);
+
+  const attrs = { ...updated.attributes };
+  const keys = Object.keys(attrs) as (keyof typeof attrs)[];
+
+  if (updated.age <= 24) {
+    // Young player development
+    const growthRate = Math.random() * 3 + 1;
+    for (const key of keys) {
+      if (attrs[key] < updated.potential) {
+        attrs[key] = Math.min(99, attrs[key] + Math.round(growthRate));
+      }
+    }
+  } else if (updated.age >= 30) {
+    // Decline
+    const declineRate = (updated.age - 29) * 0.8;
+    for (const key of keys) {
+      attrs[key] = Math.max(25, Math.round(attrs[key] - declineRate + Math.random() * 2));
+    }
+    // Pace and stamina decline faster
+    attrs.pace = Math.max(25, Math.round(attrs.pace - declineRate * 0.5));
+    attrs.stamina = Math.max(25, Math.round(attrs.stamina - declineRate * 0.5));
+  }
+
+  updated.attributes = attrs;
+
+  // Reset season stats
+  updated.goals = 0;
+  updated.assists = 0;
+  updated.appearances = 0;
+  updated.yellowCards = 0;
+  updated.redCards = 0;
+  updated.form = rand(50, 85);
+  updated.fatigue = 0;
+  updated.injured = false;
+  updated.injuryWeeks = 0;
+  updated.morale = rand(55, 85);
+
+  return updated;
+}
+
+// Check if player should retire
+export function shouldRetire(player: Player): boolean {
+  if (player.age < 33) return false;
+  if (player.age >= 40) return true;
+  const overall = getPlayerOverall(player);
+  const retireChance = (player.age - 32) * 0.15 + (overall < 55 ? 0.3 : 0);
+  return Math.random() < retireChance;
+}
+
+// Generate a replacement youth player
+export function generateYouthPlayer(position: Position, teamReputation: number): Player {
+  return generatePlayer(position, Math.max(40, teamReputation - 20), [16, 19]);
+}
+
+// Calculate GOAT score
+export function calculateGOATScore(player: Player): number {
+  const overall = getPlayerOverall(player);
+  return Math.round(
+    player.careerGoals * 1.5 +
+    player.careerAssists * 1.0 +
+    player.trophies * 25 +
+    player.individualAwards.length * 40 +
+    (player.careerAppearances / 10) * 2 +
+    overall * 2 +
+    (player.isLegend ? 50 : 0) +
+    player.hiddenTraits.bigMatch * 0.5
+  );
 }

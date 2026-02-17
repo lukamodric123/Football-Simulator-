@@ -1,10 +1,10 @@
-import { NewsItem, GameState, Team } from './types';
-import { getPlayerOverall, getTeamOverall } from './generator';
+import { NewsItem, GameState, Player, GOATEntry } from './types';
+import { getPlayerOverall, calculateGOATScore } from './generator';
 
 const rand = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-let newsId = 0;
+let newsId = 1000;
 
 const transferHeadlines = [
   '{player} linked with shock move to {team}',
@@ -12,6 +12,8 @@ const transferHeadlines = [
   'Transfer drama: {player} hands in transfer request',
   '{team} prepare record bid for {player}',
   'Deadline day chaos: {player} to {team}?',
+  '{team} close in on deal for {player}',
+  'Agent confirms {player} wants {team} move',
 ];
 
 const matchHeadlines = [
@@ -20,6 +22,8 @@ const matchHeadlines = [
   '{team} suffer embarrassing defeat',
   'Late drama as {team} snatch draw',
   'Underdog {team} pull off massive upset',
+  '{team} extend winning streak to new heights',
+  'Derby day delight for {team} fans',
 ];
 
 const dramaHeadlines = [
@@ -29,6 +33,8 @@ const dramaHeadlines = [
   'Financial trouble brewing at {team}',
   '{team} fans protest after poor results',
   'Board meeting called at struggling {team}',
+  'Ego clash between stars at {team}',
+  'Secret transfer request leaked at {team}',
 ];
 
 const youthHeadlines = [
@@ -36,6 +42,7 @@ const youthHeadlines = [
   '{team} academy graduate {player} earns first call-up',
   'Scouts flock to see {team} prodigy {player}',
   'Teenage sensation {player} scores on debut for {team}',
+  '{player} tipped as future Ballon d\'Or winner',
 ];
 
 const generalHeadlines = [
@@ -44,13 +51,51 @@ const generalHeadlines = [
   'Golden Boot race: Who leads the charts?',
   'Manager of the Month announced',
   'Injury crisis hits multiple top clubs',
+  'Surprise leaders emerge in {league}',
+];
+
+const goatHeadlines = [
+  'Is {player} already top 5 all time?',
+  '{player} enters GOAT conversation after stellar season',
+  'New era: {player} surpassing legends of the past',
+  'GOAT debate sparks heated fan arguments about {player}',
+  'Pundits split: Is {player} the greatest ever?',
+  '{player}\'s legacy grows with every match',
+];
+
+const legendHeadlines = [
+  'Generational talent {player} emerges at {team}',
+  '{player} dubbed "the next Messi" after incredible display',
+  'Once-in-a-generation: {player} is the real deal',
+  '{team}\'s {player} breaks records with stunning performance',
+];
+
+const retirementHeadlines = [
+  'Legend {player} announces retirement from football',
+  'End of an era: {player} hangs up boots after glorious career',
+  '{player} retires with {goals} career goals and {trophies} trophies',
+  'Football mourns as {player} plays final match',
+  'Farewell to a legend: {player} calls time on career',
+];
+
+const takeoverHeadlines = [
+  'BREAKING: New billionaire owner takes over {team}',
+  '{team} face financial crisis, budget slashed',
+  'Ownership change at {team} promises new era',
+  '{team} announce ambitious rebuild plan under new ownership',
+];
+
+const managerHeadlines = [
+  '{team} sack manager after poor run of results',
+  'New manager bounce expected at {team}',
+  '{team} appoint legendary coach as new boss',
+  'Manager of the Year race wide open',
 ];
 
 export function generateWeeklyNews(state: GameState): NewsItem[] {
   const news: NewsItem[] = [];
   const allTeams = Object.values(state.teams);
 
-  // Generate 2-5 news items per week
   const count = rand(2, 5);
   for (let i = 0; i < count; i++) {
     const team = pick(allTeams);
@@ -62,25 +107,30 @@ export function generateWeeklyNews(state: GameState): NewsItem[] {
     let headline: string;
     let category: NewsItem['category'];
 
-    if (roll < 0.2) {
-      headline = pick(transferHeadlines)
-        .replace('{player}', playerName)
-        .replace('{team}', team.name);
+    if (roll < 0.15) {
+      headline = pick(transferHeadlines).replace('{player}', playerName).replace('{team}', team.name);
       category = 'transfer';
-    } else if (roll < 0.45) {
+    } else if (roll < 0.35) {
       headline = pick(matchHeadlines).replace('{team}', team.name);
       category = 'match';
-    } else if (roll < 0.65) {
+    } else if (roll < 0.50) {
       headline = pick(dramaHeadlines).replace('{team}', team.name);
       category = 'drama';
-    } else if (roll < 0.8 && player && player.age < 22) {
-      headline = pick(youthHeadlines)
-        .replace('{player}', playerName)
-        .replace('{team}', team.name);
+    } else if (roll < 0.60 && player && player.age < 22) {
+      headline = pick(youthHeadlines).replace('{player}', playerName).replace('{team}', team.name);
       category = 'youth';
+    } else if (roll < 0.70 && player && player.isLegend) {
+      headline = pick(legendHeadlines).replace('{player}', playerName).replace('{team}', team.name);
+      category = 'legend';
+    } else if (roll < 0.80) {
+      headline = pick(managerHeadlines).replace('{team}', team.name);
+      category = 'manager';
+    } else if (roll < 0.88) {
+      // Takeover event
+      headline = pick(takeoverHeadlines).replace('{team}', team.name);
+      category = 'takeover';
     } else {
-      headline = pick(generalHeadlines)
-        .replace('{league}', league?.name || 'the league');
+      headline = pick(generalHeadlines).replace('{league}', league?.name || 'the league');
       category = 'match';
     }
 
@@ -96,4 +146,59 @@ export function generateWeeklyNews(state: GameState): NewsItem[] {
   }
 
   return news;
+}
+
+export function generateGOATNews(rankings: GOATEntry[], season: number): NewsItem[] {
+  if (rankings.length === 0) return [];
+  const top = rankings[0];
+  const headline = pick(goatHeadlines).replace('{player}', top.playerName);
+  return [{
+    id: `n${newsId++}`,
+    headline,
+    body: '',
+    category: 'goat',
+    week: 0,
+    season,
+    importance: 5,
+  }];
+}
+
+export function generateRetirementNews(player: Player, season: number): NewsItem {
+  const headline = pick(retirementHeadlines)
+    .replace('{player}', `${player.firstName} ${player.lastName}`)
+    .replace('{goals}', String(player.careerGoals))
+    .replace('{trophies}', String(player.trophies));
+  return {
+    id: `n${newsId++}`,
+    headline,
+    body: '',
+    category: 'retirement',
+    week: 0,
+    season,
+    importance: player.isLegend ? 5 : 3,
+  };
+}
+
+export function generateSeasonAwardNews(awardName: string, playerName: string, season: number): NewsItem {
+  return {
+    id: `n${newsId++}`,
+    headline: `🏆 ${awardName}: ${playerName} wins the prestigious award for Season ${season}!`,
+    body: '',
+    category: 'award',
+    week: 0,
+    season,
+    importance: 5,
+  };
+}
+
+export function generateNewSeasonNews(season: number): NewsItem {
+  return {
+    id: `n${newsId++}`,
+    headline: `⚽ Season ${season} kicks off! New signings, fresh hopes, and the race begins again.`,
+    body: '',
+    category: 'match',
+    week: 0,
+    season,
+    importance: 5,
+  };
 }
