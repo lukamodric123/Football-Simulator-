@@ -23,24 +23,42 @@ const Index: React.FC = () => {
   }
 
   if (step === 'team_select') {
-    const leagueDef = LEAGUES.find(l => l.id === selectedLeague)!;
+    const allLeagues = LEAGUES;
+    const leagueDef = allLeagues.find(l => l.id === selectedLeague)!;
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
         <h1 className="font-display text-4xl mb-2">CHOOSE YOUR CLUB</h1>
         <p className="text-muted-foreground mb-6">Select a league, then pick your team</p>
 
-        <div className="flex gap-1 mb-6 overflow-x-auto pb-2">
-          {LEAGUES.map(l => (
-            <button
-              key={l.id}
-              onClick={() => setSelectedLeague(l.id)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
-                selectedLeague === l.id ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              }`}
-            >
-              {l.name}
-            </button>
-          ))}
+        <div className="flex flex-col gap-1 mb-6 w-full max-w-2xl">
+          <div className="flex gap-1 overflow-x-auto pb-1">
+            <span className="text-xs text-muted-foreground self-center px-1">T1</span>
+            {allLeagues.filter(l => l.tier === 1).map(l => (
+              <button
+                key={l.id}
+                onClick={() => setSelectedLeague(l.id)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
+                  selectedLeague === l.id ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }`}
+              >
+                {l.name}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-1 overflow-x-auto pb-1">
+            <span className="text-xs text-muted-foreground self-center px-1">T2</span>
+            {allLeagues.filter(l => l.tier === 2).map(l => (
+              <button
+                key={l.id}
+                onClick={() => setSelectedLeague(l.id)}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
+                  selectedLeague === l.id ? 'bg-primary text-primary-foreground' : 'bg-secondary/60 text-secondary-foreground hover:bg-secondary/80'
+                }`}
+              >
+                {l.name}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-xl w-full max-h-[400px] overflow-y-auto pr-2">
@@ -53,7 +71,7 @@ const Index: React.FC = () => {
               <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: t.color }} />
               <div>
                 <p className="font-medium">{t.name}</p>
-                <p className="text-xs text-muted-foreground">Rep: {t.reputation}</p>
+                <p className="text-xs text-muted-foreground">Rep: {t.reputation} · {leagueDef.tier === 2 ? 'Div 2' : 'Div 1'}</p>
               </div>
             </button>
           ))}
@@ -141,10 +159,10 @@ const Index: React.FC = () => {
 
         <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-2xl mx-auto text-center">
           {[
-            { icon: '🏟️', label: '5 Leagues', sub: '96 Teams' },
+            { icon: '🏟️', label: '10 Leagues', sub: '186 Teams' },
             { icon: '🏆', label: 'GOAT Debate', sub: 'All-Time Greats' },
-            { icon: '⭐', label: 'Legends', sub: 'Born Naturally' },
-            { icon: '📰', label: 'Live Drama', sub: 'Stories Emerge' },
+            { icon: '🌍', label: 'World Cup', sub: 'Every 4 Seasons' },
+            { icon: '↕️', label: 'Pro/Rel', sub: 'Rise & Fall' },
           ].map(f => (
             <div key={f.label}>
               <span className="text-3xl">{f.icon}</span>

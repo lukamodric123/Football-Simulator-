@@ -7,6 +7,7 @@ import NewsFeed from '@/components/game/NewsFeed';
 import PlayerDetail from '@/components/game/PlayerDetail';
 import GOATRankings from '@/components/game/GOATRankings';
 import AwardsHistory from '@/components/game/AwardsHistory';
+import WorldCupView from '@/components/game/WorldCupView';
 import { LEAGUES } from '@/engine/data';
 
 type View = 'dashboard' | 'team' | 'player';
@@ -17,12 +18,16 @@ const Dashboard: React.FC = () => {
   const [view, setView] = useState<View>('dashboard');
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
-  const [tab, setTab] = useState<'standings' | 'results' | 'scorers' | 'goat' | 'awards'>('standings');
+  const [tab, setTab] = useState<'standings' | 'results' | 'scorers' | 'goat' | 'awards' | 'worldcup'>('standings');
   const [simming, setSimming] = useState(false);
 
   const league = state.leagues.find(l => l.id === selectedLeague);
   const standings = getLeagueStandings(selectedLeague);
   const managedTeam = state.managedTeamId ? getTeam(state.managedTeamId) : null;
+
+  // Separate tier 1 and tier 2 leagues
+  const tier1Leagues = state.leagues.filter(l => l.tier === 1);
+  const tier2Leagues = state.leagues.filter(l => l.tier === 2);
 
   const handleTeamClick = (teamId: string) => { setSelectedTeamId(teamId); setView('team'); };
   const handlePlayerClick = (playerId: string) => { setSelectedPlayerId(playerId); setView('player'); };
@@ -66,6 +71,7 @@ const Dashboard: React.FC = () => {
               </p>
               <p className="text-xs text-muted-foreground">
                 Manager: {team.managerName} ({team.managerStyle.replace(/_/g, ' ')}) · Fan Mood: {team.fanMood}
+                {' · '}{state.leagues.find(l => l.teams.includes(team.id))?.name || ''}
               </p>
             </div>
           </div>
@@ -76,6 +82,7 @@ const Dashboard: React.FC = () => {
   }
 
   const topScorers = getTopScorers(selectedLeague);
+  const nextWorldCup = 4 - (state.season % 4);
 
   return (
     <div className="max-w-7xl mx-auto p-4">
@@ -85,12 +92,18 @@ const Dashboard: React.FC = () => {
           <h1 className="font-display text-3xl sm:text-4xl text-foreground">
             ULTIMATE SOCCER<span className="text-primary"> SIM</span>
           </h1>
-          <div className="flex items-center gap-3 text-sm">
+          <div className="flex items-center gap-3 text-sm flex-wrap">
             <span className="text-muted-foreground">Season {state.season} · Week {state.week}</span>
             <span className={`text-xs px-2 py-0.5 rounded font-medium ${state.gameMode === 'manager' ? 'bg-primary/20 text-primary' : 'bg-accent/20 text-accent'}`}>
               {state.gameMode === 'manager' ? `🎯 Manager: ${managedTeam?.shortName || ''}` : '🌍 Universe Mode'}
             </span>
             {state.phase === 'end_season' && <span className="text-accent text-xs">✨ Season Complete!</span>}
+            {nextWorldCup <= 4 && nextWorldCup > 0 && state.season % 4 !== 0 && (
+              <span className="text-xs text-muted-foreground">🌍 WC in {nextWorldCup}S</span>
+            )}
+            {state.season % 4 === 0 && state.worldCup && (
+              <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded">🌍 WORLD CUP YEAR</span>
+            )}
           </div>
         </div>
 
@@ -143,19 +156,36 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* League Selector */}
-      <div className="flex gap-1 mb-4 overflow-x-auto pb-2">
-        {LEAGUES.map(l => (
-          <button
-            key={l.id}
-            onClick={() => setSelectedLeague(l.id)}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
-              selectedLeague === l.id ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-            }`}
-          >
-            {l.name}
-          </button>
-        ))}
+      {/* League Selector with Tiers */}
+      <div className="mb-4 space-y-2">
+        <div className="flex gap-1 overflow-x-auto pb-1">
+          <span className="text-xs text-muted-foreground self-center px-1 whitespace-nowrap">T1</span>
+          {tier1Leagues.map(l => (
+            <button
+              key={l.id}
+              onClick={() => { setSelectedLeague(l.id); if (tab === 'worldcup') setTab('standings'); }}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
+                selectedLeague === l.id ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+              }`}
+            >
+              {l.name}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1 overflow-x-auto pb-1">
+          <span className="text-xs text-muted-foreground self-center px-1 whitespace-nowrap">T2</span>
+          {tier2Leagues.map(l => (
+            <button
+              key={l.id}
+              onClick={() => { setSelectedLeague(l.id); if (tab === 'worldcup') setTab('standings'); }}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
+                selectedLeague === l.id ? 'bg-primary text-primary-foreground' : 'bg-secondary/60 text-secondary-foreground hover:bg-secondary/80'
+              }`}
+            >
+              {l.name}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Main Layout */}
@@ -163,7 +193,7 @@ const Dashboard: React.FC = () => {
         <div className="lg:col-span-2 space-y-4">
           {/* Tabs */}
           <div className="flex gap-1 bg-secondary/50 p-1 rounded-lg overflow-x-auto">
-            {(['standings', 'results', 'scorers', 'goat', 'awards'] as const).map(t => (
+            {(['standings', 'results', 'scorers', 'goat', 'awards', 'worldcup'] as const).map(t => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -171,13 +201,30 @@ const Dashboard: React.FC = () => {
                   tab === t ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                {t === 'scorers' ? '⚽ Scorers' : t === 'goat' ? '👑 GOAT' : t === 'awards' ? '🏆 Awards' : t === 'results' ? '📋 Results' : '📊 Table'}
+                {t === 'scorers' ? '⚽ Scorers' : t === 'goat' ? '👑 GOAT' : t === 'awards' ? '🏆 Awards' : t === 'results' ? '📋 Results' : t === 'worldcup' ? '🌍 World Cup' : '📊 Table'}
               </button>
             ))}
           </div>
 
           <div className="bg-card rounded-lg p-4">
-            {tab === 'standings' && <StandingsTable standings={standings} onTeamClick={handleTeamClick} />}
+            {tab === 'standings' && (
+              <div>
+                {league && league.tier === 1 && (
+                  <div className="flex items-center gap-2 mb-3">
+                    <h3 className="font-display text-lg text-muted-foreground">{league.name}</h3>
+                    <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Top 4 qualify</span>
+                    <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded">Bottom 3 relegated</span>
+                  </div>
+                )}
+                {league && league.tier === 2 && (
+                  <div className="flex items-center gap-2 mb-3">
+                    <h3 className="font-display text-lg text-muted-foreground">{league.name}</h3>
+                    <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Top 3 promoted</span>
+                  </div>
+                )}
+                <StandingsTable standings={standings} onTeamClick={handleTeamClick} leagueTier={league?.tier} />
+              </div>
+            )}
 
             {tab === 'results' && league && (
               <div>
@@ -210,6 +257,10 @@ const Dashboard: React.FC = () => {
             {tab === 'awards' && (
               <AwardsHistory awards={state.awards} allTimeRecords={state.allTimeRecords} seasonAwards={state.seasonAwards} />
             )}
+
+            {tab === 'worldcup' && (
+              <WorldCupView worldCup={state.worldCup!} worldCupHistory={state.worldCupHistory} />
+            )}
           </div>
         </div>
 
@@ -237,9 +288,30 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
+            {/* World Cup info */}
+            {state.worldCupHistory.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <p className="text-xs text-muted-foreground mb-1">🌍 LAST WORLD CUP</p>
+                <p className="text-sm font-medium text-accent">🏆 {state.worldCupHistory[state.worldCupHistory.length - 1].winner}</p>
+              </div>
+            )}
+
+            {/* Promotion/Relegation log */}
+            {state.promotionLog.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <p className="text-xs text-muted-foreground mb-2">↕️ LATEST MOVEMENTS</p>
+                {state.promotionLog[state.promotionLog.length - 1].promoted.slice(0, 3).map(p => (
+                  <p key={p.teamId} className="text-xs text-primary">⬆ {state.teams[p.teamId]?.name || p.teamId}</p>
+                ))}
+                {state.promotionLog[state.promotionLog.length - 1].relegated.slice(0, 3).map(r => (
+                  <p key={r.teamId} className="text-xs text-destructive">⬇ {state.teams[r.teamId]?.name || r.teamId}</p>
+                ))}
+              </div>
+            )}
+
             {/* GOAT preview */}
             {state.goatRankings.length > 0 && (
-              <div className="mt-4 pt-3 border-t border-border">
+              <div className="mt-3 pt-3 border-t border-border">
                 <p className="text-xs text-muted-foreground mb-2">👑 CURRENT GOAT</p>
                 <div className="flex items-center gap-2">
                   <span className="font-display text-lg text-accent">1.</span>
