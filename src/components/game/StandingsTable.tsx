@@ -5,9 +5,10 @@ interface StandingsTableProps {
   standings: (Standing & { team: Team })[];
   onTeamClick?: (teamId: string) => void;
   compact?: boolean;
+  leagueTier?: number;
 }
 
-const StandingsTable: React.FC<StandingsTableProps> = ({ standings, onTeamClick, compact }) => {
+const StandingsTable: React.FC<StandingsTableProps> = ({ standings, onTeamClick, compact, leagueTier = 1 }) => {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -28,6 +29,11 @@ const StandingsTable: React.FC<StandingsTableProps> = ({ standings, onTeamClick,
         <tbody>
           {standings.map((s, i) => {
             const gd = s.goalsFor - s.goalsAgainst;
+            // Promotion zone for tier 2, qualification zone for tier 1
+            const isPromoZone = leagueTier === 2 && i < 3;
+            const isQualifyZone = leagueTier === 1 && i < 4;
+            const isRelegationZone = leagueTier === 1 && i >= standings.length - 3;
+
             return (
               <tr
                 key={s.teamId}
@@ -37,9 +43,11 @@ const StandingsTable: React.FC<StandingsTableProps> = ({ standings, onTeamClick,
                 <td className="py-2 px-2 text-muted-foreground">
                   <span
                     className={`inline-flex items-center justify-center w-5 h-5 rounded text-xs font-bold ${
-                      i < 4
+                      isPromoZone
                         ? 'bg-primary/20 text-primary'
-                        : i >= standings.length - 3
+                        : isQualifyZone
+                        ? 'bg-primary/20 text-primary'
+                        : isRelegationZone
                         ? 'bg-destructive/20 text-destructive'
                         : ''
                     }`}
@@ -54,6 +62,8 @@ const StandingsTable: React.FC<StandingsTableProps> = ({ standings, onTeamClick,
                       style={{ backgroundColor: s.team?.color || '#666' }}
                     />
                     <span className="truncate">{s.team?.name || s.teamId}</span>
+                    {isPromoZone && <span className="text-[10px] text-primary">⬆</span>}
+                    {isRelegationZone && <span className="text-[10px] text-destructive">⬇</span>}
                   </div>
                 </td>
                 <td className="py-2 px-2 text-center text-muted-foreground">{s.played}</td>

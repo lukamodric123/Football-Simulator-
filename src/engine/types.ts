@@ -107,6 +107,8 @@ export interface League {
   id: string;
   name: string;
   country: string;
+  tier: number; // 1 = top division, 2 = second division
+  linkedLeagueId?: string; // paired league for promotion/relegation
   teams: string[];
   standings: Standing[];
   fixtures: Fixture[];
@@ -197,6 +199,10 @@ export interface GameState {
   retiredPlayers: Player[];
   seasonAwards: { season: number; awards: Award[] }[];
   totalSeasonsPlayed: number;
+  // V3 additions
+  worldCup: WorldCup | null;
+  worldCupHistory: { season: number; winner: string; goldenBoot?: string; goldenBall?: string }[];
+  promotionLog: { season: number; promoted: { teamId: string; fromLeague: string; toLeague: string }[]; relegated: { teamId: string; fromLeague: string; toLeague: string }[] }[];
 }
 
 export type GamePhase = 'pre_season' | 'in_season' | 'transfer_window' | 'end_season';
@@ -214,5 +220,33 @@ export interface LeagueDefinition {
   id: string;
   name: string;
   country: string;
+  tier: number;
+  linkedLeagueId?: string;
   teams: { name: string; shortName: string; reputation: number; color: string }[];
+}
+
+// World Cup types
+export interface WorldCup {
+  season: number;
+  groups: WorldCupGroup[];
+  knockoutRound: 'group' | 'r16' | 'quarter' | 'semi' | 'final' | 'complete';
+  knockoutFixtures: Fixture[];
+  goldenBoot?: { playerId: string; playerName: string; goals: number };
+  goldenBall?: { playerId: string; playerName: string };
+  winner?: string; // country name
+  awards: Award[];
+}
+
+export interface WorldCupGroup {
+  name: string;
+  teams: WorldCupTeam[];
+  fixtures: Fixture[];
+  standings: Standing[];
+}
+
+export interface WorldCupTeam {
+  id: string;
+  country: string;
+  squad: Player[];
+  rating: number;
 }

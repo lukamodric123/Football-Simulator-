@@ -3,7 +3,8 @@ import { GameState, League, Standing, Team, Player, Award, GOATEntry, AllTimeRec
 import { LEAGUES } from './data';
 import { generateTeam, getPlayerOverall, agePlayer, shouldRetire, generateYouthPlayer, calculateGOATScore, generatePlayer, uid } from './generator';
 import { generateFixtures, simulateMatch } from './simulation';
-import { generateWeeklyNews, generateGOATNews, generateRetirementNews, generateSeasonAwardNews, generateNewSeasonNews } from './news';
+import { generateWeeklyNews, generateGOATNews, generateRetirementNews, generateSeasonAwardNews, generateNewSeasonNews, generatePromotionNews, generateWorldCupNews } from './news';
+import { generateWorldCup, simulateWorldCupGroupStage, simulateWorldCupKnockouts } from './worldcup';
 
 interface GameContextType {
   state: GameState;
@@ -43,6 +44,9 @@ const initialState: GameState = {
   retiredPlayers: [],
   seasonAwards: [],
   totalSeasonsPlayed: 0,
+  worldCup: null,
+  worldCupHistory: [],
+  promotionLog: [],
 };
 
 function buildLeague(leagueDef: typeof LEAGUES[0], teams: Record<string, Team>, players: Record<string, Player>) {
@@ -63,6 +67,8 @@ function buildLeague(leagueDef: typeof LEAGUES[0], teams: Record<string, Team>, 
     id: leagueDef.id,
     name: leagueDef.name,
     country: leagueDef.country,
+    tier: leagueDef.tier,
+    linkedLeagueId: leagueDef.linkedLeagueId,
     teams: teamIds,
     standings,
     fixtures,
@@ -99,6 +105,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       retiredPlayers: [],
       seasonAwards: [],
       totalSeasonsPlayed: 0,
+      worldCup: null,
+      worldCupHistory: [],
+      promotionLog: [],
     });
   }, []);
 
@@ -198,7 +207,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
       // --- End of season awards ---
       const seasonAwards: Award[] = [];
-      // Find top scorer across all leagues
       let topScorerPlayer: Player | null = null;
       let topScorerTeam: Team | null = null;
       for (const team of Object.values(updatedTeams)) {
@@ -219,7 +227,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Ballon d'Or - best overall performance
+      // Ballon d'Or
       let bestPlayer: Player | null = null;
       let bestScore = 0;
       for (const p of Object.values(updatedPlayers)) {
@@ -265,7 +273,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
         const champId = sorted[0]?.teamId;
         if (champId && updatedTeams[champId]) {
           updatedTeams[champId] = { ...updatedTeams[champId], titles: updatedTeams[champId].titles + 1, reputation: Math.min(99, updatedTeams[champId].reputation + 2) };
-          // Give trophies to players
           const champTeam = updatedTeams[champId];
           for (const p of champTeam.squad) {
             if (updatedPlayers[p.id]) {
@@ -275,7 +282,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
           awardNews.push(generateSeasonAwardNews(`${league.name} Champions`, champTeam.name, prev.season));
         }
 
-        // Reputation changes
         const bottom3 = sorted.slice(-3);
         for (const s of bottom3) {
           if (updatedTeams[s.teamId]) {
@@ -289,12 +295,53 @@ export function GameProvider({ children }: { children: ReactNode }) {
         };
       });
 
+      // --- PROMOTION / RELEGATION ---
+      const promotionNews: any[] = [];
+      const promotionLogEntry: { promoted: { teamId: string; fromLeague: string; toLeague: string }[]; relegated: { teamId: string; fromLeague: string; toLeague: string }[] } = {
+        promoted: [], relegated: [],
+      };
+      const PROMO_RELEGATE_COUNT = 3;
+
+      // Group leagues by country pair
+      const tier1Leagues = newLeagues.filter(l => l.tier === 1 && l.linkedLeagueId);
+      for (const topLeague of tier1Leagues) {
+        const botLeague = newLeagues.find(l => l.id === topLeague.linkedLeagueId);
+        if (!botLeague) continue;
+
+        const topSorted = [...topLeague.standings].sort((a, b) => b.points - a.points || (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst));
+        const botSorted = [...botLeague.standings].sort((a, b) => b.points - a.points || (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst));
+
+        const relegatedIds = topSorted.slice(-PROMO_RELEGATE_COUNT).map(s => s.teamId);
+        const promotedIds = botSorted.slice(0, PROMO_RELEGATE_COUNT).map(s => s.teamId);
+
+        // Swap teams between leagues
+        for (const rid of relegatedIds) {
+          const team = updatedTeams[rid];
+          if (team) {
+            updatedTeams[rid] = { ...team, leagueId: botLeague.id, reputation: Math.max(35, team.reputation - 3) };
+            promotionLogEntry.relegated.push({ teamId: rid, fromLeague: topLeague.id, toLeague: botLeague.id });
+            promotionNews.push(generatePromotionNews(team.name, topLeague.name, botLeague.name, false, prev.season));
+          }
+        }
+        for (const pid of promotedIds) {
+          const team = updatedTeams[pid];
+          if (team) {
+            updatedTeams[pid] = { ...team, leagueId: topLeague.id, reputation: Math.min(90, team.reputation + 3) };
+            promotionLogEntry.promoted.push({ teamId: pid, fromLeague: botLeague.id, toLeague: topLeague.id });
+            promotionNews.push(generatePromotionNews(team.name, botLeague.name, topLeague.name, true, prev.season));
+          }
+        }
+
+        // Update league team lists
+        topLeague.teams = [...topLeague.teams.filter(id => !relegatedIds.includes(id)), ...promotedIds];
+        botLeague.teams = [...botLeague.teams.filter(id => !promotedIds.includes(id)), ...relegatedIds];
+      }
+
       // --- Player aging, retirement, career records ---
       for (const pid of Object.keys(updatedPlayers)) {
         const p = updatedPlayers[pid];
         if (p.retired) continue;
 
-        // Save season history
         const teamId = Object.values(updatedTeams).find(t => t.squad.some(sq => sq.id === pid))?.id || '';
         const seasonRec: SeasonRecord = {
           season: prev.season,
@@ -310,10 +357,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         updated.careerAssists += updated.assists;
         updated.careerAppearances += updated.appearances;
 
-        // Age the player
         updated = agePlayer(updated);
 
-        // Check retirement
         if (shouldRetire(updated)) {
           updated.retired = true;
           updated.retiredSeason = prev.season;
@@ -330,7 +375,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
         const retiredIds = team.squad.filter(p => updatedPlayers[p.id]?.retired).map(p => p.id);
         if (retiredIds.length > 0) {
           let newSquad = team.squad.filter(p => !updatedPlayers[p.id]?.retired);
-          // Generate replacements
           for (const rid of retiredIds) {
             const retiredP = updatedPlayers[rid];
             const youth = generateYouthPlayer(retiredP.position, team.reputation);
@@ -341,22 +385,62 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // --- Random events: takeovers, manager sackings ---
+      // --- Random events ---
       for (const teamId of Object.keys(updatedTeams)) {
         const team = updatedTeams[teamId];
-        // Small chance of budget change
         if (Math.random() < 0.05) {
           const change = Math.random() > 0.5 ? Math.round(team.budget * 0.5) : -Math.round(team.budget * 0.3);
           updatedTeams[teamId] = { ...team, budget: Math.max(10, team.budget + change) };
         }
-        // Fan mood based on performance
-        const league = newLeagues.find(l => l.id === team.leagueId);
+        const league = newLeagues.find(l => l.teams.includes(teamId));
         if (league) {
-          const pos = league.standings.sort((a, b) => b.points - a.points).findIndex(s => s.teamId === teamId);
-          const total = league.standings.length;
+          const sorted = [...league.standings].sort((a, b) => b.points - a.points);
+          const pos = sorted.findIndex(s => s.teamId === teamId);
+          const total = sorted.length;
           const fanMood = pos < total * 0.2 ? 'happy' : pos < total * 0.4 ? 'neutral' : pos < total * 0.7 ? 'frustrated' : 'angry';
           updatedTeams[teamId] = { ...updatedTeams[teamId], fanMood: fanMood as any };
         }
+      }
+
+      // --- WORLD CUP every 4 seasons ---
+      let worldCup = prev.worldCup;
+      const worldCupHistory = [...prev.worldCupHistory];
+      const wcNews: any[] = [];
+
+      if (newSeason % 4 === 0) {
+        // Generate and simulate entire World Cup
+        let wc = generateWorldCup(prev.season, updatedPlayers);
+        const groupResult = simulateWorldCupGroupStage(wc, updatedPlayers);
+        wc = groupResult.worldCup;
+        updatedPlayers = groupResult.updatedPlayers;
+
+        const koResult = simulateWorldCupKnockouts(wc, updatedPlayers);
+        wc = koResult.worldCup;
+        updatedPlayers = koResult.updatedPlayers;
+
+        worldCup = wc;
+        if (wc.winner) {
+          worldCupHistory.push({
+            season: prev.season,
+            winner: wc.winner,
+            goldenBoot: wc.goldenBoot?.playerName,
+            goldenBall: wc.goldenBall?.playerName,
+          });
+          wcNews.push(...generateWorldCupNews(wc, prev.season));
+
+          // Add WC awards to player records
+          for (const award of wc.awards) {
+            if (updatedPlayers[award.playerId]) {
+              updatedPlayers[award.playerId] = {
+                ...updatedPlayers[award.playerId],
+                individualAwards: [...updatedPlayers[award.playerId].individualAwards, award.name],
+                trophies: updatedPlayers[award.playerId].trophies + (award.name === 'WC Golden Ball' ? 1 : 0),
+              };
+            }
+          }
+        }
+      } else {
+        worldCup = null;
       }
 
       // --- GOAT Rankings ---
@@ -403,7 +487,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         checkRecord('trophies', p.id, name, p.trophies);
       }
 
-      // Generate new season fixtures
+      // Generate new season fixtures (with updated team lists from promotion/relegation)
       const readyLeagues = newLeagues.map(league => {
         const fixtures = generateFixtures(league.teams);
         const standings: Standing[] = league.teams.map(id => ({
@@ -429,13 +513,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
         leagues: readyLeagues,
         teams: updatedTeams,
         players: updatedPlayers,
-        news: [newSeasonNews, ...goatNews, ...awardNews, ...retirementNews, ...prev.news].slice(0, 200),
-        awards: [...seasonAwards, ...prev.awards],
+        news: [newSeasonNews, ...wcNews, ...promotionNews, ...goatNews, ...awardNews, ...retirementNews, ...prev.news].slice(0, 300),
+        awards: [...seasonAwards, ...(worldCup?.awards || []), ...prev.awards],
         goatRankings,
         allTimeRecords,
         retiredPlayers: retiredList,
         seasonAwards: [...prev.seasonAwards, { season: prev.season, awards: seasonAwards }],
         totalSeasonsPlayed: prev.totalSeasonsPlayed + 1,
+        worldCup,
+        worldCupHistory,
+        promotionLog: [...prev.promotionLog, { season: prev.season, ...promotionLogEntry }],
       };
     });
   }, []);

@@ -1,4 +1,4 @@
-import { NewsItem, GameState, Player, GOATEntry } from './types';
+import { NewsItem, GameState, Player, GOATEntry, WorldCup } from './types';
 import { getPlayerOverall, calculateGOATScore } from './generator';
 
 const rand = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -126,7 +126,6 @@ export function generateWeeklyNews(state: GameState): NewsItem[] {
       headline = pick(managerHeadlines).replace('{team}', team.name);
       category = 'manager';
     } else if (roll < 0.88) {
-      // Takeover event
       headline = pick(takeoverHeadlines).replace('{team}', team.name);
       category = 'takeover';
     } else {
@@ -201,4 +200,57 @@ export function generateNewSeasonNews(season: number): NewsItem {
     season,
     importance: 5,
   };
+}
+
+export function generatePromotionNews(teamName: string, fromLeague: string, toLeague: string, isPromotion: boolean, season: number): NewsItem {
+  const headline = isPromotion
+    ? `🎉 ${teamName} PROMOTED to ${toLeague}! A dream season ends in glory.`
+    : `😢 ${teamName} RELEGATED to ${toLeague}. A bitter end to the season.`;
+  return {
+    id: `n${newsId++}`,
+    headline,
+    body: '',
+    category: isPromotion ? 'award' : 'drama',
+    week: 0,
+    season,
+    importance: 4,
+  };
+}
+
+export function generateWorldCupNews(wc: WorldCup, season: number): NewsItem[] {
+  const news: NewsItem[] = [];
+  if (wc.winner) {
+    news.push({
+      id: `n${newsId++}`,
+      headline: `🏆🌍 WORLD CUP: ${wc.winner} are WORLD CHAMPIONS! An incredible tournament comes to an end.`,
+      body: '',
+      category: 'award',
+      week: 0,
+      season,
+      importance: 5,
+    });
+  }
+  if (wc.goldenBoot) {
+    news.push({
+      id: `n${newsId++}`,
+      headline: `👟 World Cup Golden Boot: ${wc.goldenBoot.playerName} finishes with ${wc.goldenBoot.goals} goals!`,
+      body: '',
+      category: 'award',
+      week: 0,
+      season,
+      importance: 4,
+    });
+  }
+  if (wc.goldenBall) {
+    news.push({
+      id: `n${newsId++}`,
+      headline: `⭐ World Cup Golden Ball: ${wc.goldenBall.playerName} named tournament's best player!`,
+      body: '',
+      category: 'award',
+      week: 0,
+      season,
+      importance: 4,
+    });
+  }
+  return news;
 }
