@@ -91,6 +91,14 @@ export function simulateMatch(
         teamId: homeTeam.squad.includes(p) ? homeTeam.id : awayTeam.id,
       });
     }
+    if (Math.random() < 0.01) {
+      events.push({
+        minute: rand(1, 90),
+        type: 'red_card',
+        playerId: p.id,
+        teamId: homeTeam.squad.includes(p) ? homeTeam.id : awayTeam.id,
+      });
+    }
   }
 
   // Injuries
@@ -123,6 +131,20 @@ export function simulateMatch(
     }
     updatedPlayers[event.playerId] = updated;
   }
+
+  // Track clean sheets for GKs and defenders
+  const trackCleanSheet = (team: Team, goalsConc: number) => {
+    if (goalsConc === 0) {
+      const gks = team.squad.filter(p => p.position === 'GK' && !p.injured);
+      for (const gk of gks.slice(0, 1)) {
+        if (updatedPlayers[gk.id]) {
+          updatedPlayers[gk.id] = { ...updatedPlayers[gk.id], cleanSheets: updatedPlayers[gk.id].cleanSheets + 1 };
+        }
+      }
+    }
+  };
+  trackCleanSheet(homeTeam, awayGoals);
+  trackCleanSheet(awayTeam, homeGoals);
 
   // Update appearances for all non-injured players (best 11)
   const updateAppearances = (team: Team) => {

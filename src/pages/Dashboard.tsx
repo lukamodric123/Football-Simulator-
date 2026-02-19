@@ -8,6 +8,8 @@ import PlayerDetail from '@/components/game/PlayerDetail';
 import GOATRankings from '@/components/game/GOATRankings';
 import AwardsHistory from '@/components/game/AwardsHistory';
 import WorldCupView from '@/components/game/WorldCupView';
+import UCLView from '@/components/game/UCLView';
+import TransferView from '@/components/game/TransferView';
 import { LEAGUES } from '@/engine/data';
 
 type View = 'dashboard' | 'team' | 'player';
@@ -18,14 +20,13 @@ const Dashboard: React.FC = () => {
   const [view, setView] = useState<View>('dashboard');
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
-  const [tab, setTab] = useState<'standings' | 'results' | 'scorers' | 'goat' | 'awards' | 'worldcup'>('standings');
+  const [tab, setTab] = useState<'standings' | 'results' | 'scorers' | 'goat' | 'awards' | 'worldcup' | 'ucl' | 'transfers'>('standings');
   const [simming, setSimming] = useState(false);
 
   const league = state.leagues.find(l => l.id === selectedLeague);
   const standings = getLeagueStandings(selectedLeague);
   const managedTeam = state.managedTeamId ? getTeam(state.managedTeamId) : null;
 
-  // Separate tier 1 and tier 2 leagues
   const tier1Leagues = state.leagues.filter(l => l.tier === 1);
   const tier2Leagues = state.leagues.filter(l => l.tier === 2);
 
@@ -65,6 +66,9 @@ const Dashboard: React.FC = () => {
               <div className="flex items-center gap-2">
                 <h2 className="font-display text-3xl">{team.name}</h2>
                 {state.managedTeamId === team.id && <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">YOUR CLUB</span>}
+                {state.gameMode === 'survival' && state.eliminatedTeams.includes(team.id) && (
+                  <span className="text-xs bg-destructive/20 text-destructive px-2 py-0.5 rounded">ELIMINATED</span>
+                )}
               </div>
               <p className="text-sm text-muted-foreground">
                 {team.tactic} · Rep: {team.reputation} · Budget: €{team.budget}M · 🏆 {team.titles}
@@ -94,8 +98,14 @@ const Dashboard: React.FC = () => {
           </h1>
           <div className="flex items-center gap-3 text-sm flex-wrap">
             <span className="text-muted-foreground">Season {state.season} · Week {state.week}</span>
-            <span className={`text-xs px-2 py-0.5 rounded font-medium ${state.gameMode === 'manager' ? 'bg-primary/20 text-primary' : 'bg-accent/20 text-accent'}`}>
-              {state.gameMode === 'manager' ? `🎯 Manager: ${managedTeam?.shortName || ''}` : '🌍 Universe Mode'}
+            <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+              state.gameMode === 'manager' ? 'bg-primary/20 text-primary' 
+              : state.gameMode === 'survival' ? 'bg-destructive/20 text-destructive'
+              : 'bg-accent/20 text-accent'
+            }`}>
+              {state.gameMode === 'manager' ? `🎯 Manager: ${managedTeam?.shortName || ''}` 
+               : state.gameMode === 'survival' ? `⚔️ Survival: ${state.survivalTeams.length} left`
+               : '🌍 Universe Mode'}
             </span>
             {state.phase === 'end_season' && <span className="text-accent text-xs">✨ Season Complete!</span>}
             {nextWorldCup <= 4 && nextWorldCup > 0 && state.season % 4 !== 0 && (
@@ -117,32 +127,20 @@ const Dashboard: React.FC = () => {
             </button>
           ) : (
             <>
-              <button
-                onClick={simulateWeek}
-                disabled={simming}
-                className="gradient-pitch text-primary-foreground px-4 py-2 rounded-lg font-display text-base tracking-wider hover:opacity-90 transition-opacity disabled:opacity-40 glow-pitch"
-              >
+              <button onClick={simulateWeek} disabled={simming}
+                className="gradient-pitch text-primary-foreground px-4 py-2 rounded-lg font-display text-base tracking-wider hover:opacity-90 transition-opacity disabled:opacity-40 glow-pitch">
                 +1 WEEK
               </button>
-              <button
-                onClick={() => handleFastSim(5)}
-                disabled={simming}
-                className="bg-secondary text-secondary-foreground px-3 py-2 rounded-lg font-display text-sm tracking-wider hover:bg-secondary/80 disabled:opacity-40"
-              >
+              <button onClick={() => handleFastSim(5)} disabled={simming}
+                className="bg-secondary text-secondary-foreground px-3 py-2 rounded-lg font-display text-sm tracking-wider hover:bg-secondary/80 disabled:opacity-40">
                 +5
               </button>
-              <button
-                onClick={() => handleFastSim(10)}
-                disabled={simming}
-                className="bg-secondary text-secondary-foreground px-3 py-2 rounded-lg font-display text-sm tracking-wider hover:bg-secondary/80 disabled:opacity-40"
-              >
+              <button onClick={() => handleFastSim(10)} disabled={simming}
+                className="bg-secondary text-secondary-foreground px-3 py-2 rounded-lg font-display text-sm tracking-wider hover:bg-secondary/80 disabled:opacity-40">
                 +10
               </button>
-              <button
-                onClick={() => handleFastSim(999)}
-                disabled={simming}
-                className="bg-accent/20 text-accent px-3 py-2 rounded-lg font-display text-sm tracking-wider hover:bg-accent/30 disabled:opacity-40"
-              >
+              <button onClick={() => handleFastSim(999)} disabled={simming}
+                className="bg-accent/20 text-accent px-3 py-2 rounded-lg font-display text-sm tracking-wider hover:bg-accent/30 disabled:opacity-40">
                 END SEASON ⏩
               </button>
             </>
@@ -161,13 +159,10 @@ const Dashboard: React.FC = () => {
         <div className="flex gap-1 overflow-x-auto pb-1">
           <span className="text-xs text-muted-foreground self-center px-1 whitespace-nowrap">T1</span>
           {tier1Leagues.map(l => (
-            <button
-              key={l.id}
-              onClick={() => { setSelectedLeague(l.id); if (tab === 'worldcup') setTab('standings'); }}
+            <button key={l.id} onClick={() => { setSelectedLeague(l.id); if (['worldcup', 'ucl', 'transfers'].includes(tab)) setTab('standings'); }}
               className={`px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
                 selectedLeague === l.id ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              }`}
-            >
+              }`}>
               {l.name}
             </button>
           ))}
@@ -175,13 +170,10 @@ const Dashboard: React.FC = () => {
         <div className="flex gap-1 overflow-x-auto pb-1">
           <span className="text-xs text-muted-foreground self-center px-1 whitespace-nowrap">T2</span>
           {tier2Leagues.map(l => (
-            <button
-              key={l.id}
-              onClick={() => { setSelectedLeague(l.id); if (tab === 'worldcup') setTab('standings'); }}
+            <button key={l.id} onClick={() => { setSelectedLeague(l.id); if (['worldcup', 'ucl', 'transfers'].includes(tab)) setTab('standings'); }}
               className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
                 selectedLeague === l.id ? 'bg-primary text-primary-foreground' : 'bg-secondary/60 text-secondary-foreground hover:bg-secondary/80'
-              }`}
-            >
+              }`}>
               {l.name}
             </button>
           ))}
@@ -193,15 +185,14 @@ const Dashboard: React.FC = () => {
         <div className="lg:col-span-2 space-y-4">
           {/* Tabs */}
           <div className="flex gap-1 bg-secondary/50 p-1 rounded-lg overflow-x-auto">
-            {(['standings', 'results', 'scorers', 'goat', 'awards', 'worldcup'] as const).map(t => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
+            {(['standings', 'results', 'scorers', 'ucl', 'transfers', 'goat', 'awards', 'worldcup'] as const).map(t => (
+              <button key={t} onClick={() => setTab(t)}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium capitalize transition-colors whitespace-nowrap ${
                   tab === t ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {t === 'scorers' ? '⚽ Scorers' : t === 'goat' ? '👑 GOAT' : t === 'awards' ? '🏆 Awards' : t === 'results' ? '📋 Results' : t === 'worldcup' ? '🌍 World Cup' : '📊 Table'}
+                }`}>
+                {t === 'scorers' ? '⚽ Scorers' : t === 'goat' ? '👑 GOAT' : t === 'awards' ? '🏆 Awards' 
+                  : t === 'results' ? '📋 Results' : t === 'worldcup' ? '🌍 WC' 
+                  : t === 'ucl' ? '⭐ UCL' : t === 'transfers' ? '💰 Transfers' : '📊 Table'}
               </button>
             ))}
           </div>
@@ -212,7 +203,7 @@ const Dashboard: React.FC = () => {
                 {league && league.tier === 1 && (
                   <div className="flex items-center gap-2 mb-3">
                     <h3 className="font-display text-lg text-muted-foreground">{league.name}</h3>
-                    <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Top 4 qualify</span>
+                    <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Top 4 → UCL</span>
                     <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded">Bottom 3 relegated</span>
                   </div>
                 )}
@@ -243,13 +234,24 @@ const Dashboard: React.FC = () => {
                       <span className={`w-6 text-center font-bold text-sm ${i < 3 ? 'text-accent' : 'text-muted-foreground'}`}>{i + 1}</span>
                       <div className="flex-1 min-w-0">
                         <span className="font-medium truncate block">{s.player.firstName} {s.player.lastName}</span>
-                        <span className="text-xs text-muted-foreground">{s.team.shortName}</span>
+                        <span className="text-xs text-muted-foreground">{s.team.shortName} · {s.player.position}</span>
                       </div>
-                      <span className="font-display text-xl text-primary">{s.goals}</span>
+                      <div className="text-right">
+                        <span className="font-display text-xl text-primary">{s.goals}</span>
+                        <p className="text-xs text-muted-foreground">{s.player.assists}A</p>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
+            )}
+
+            {tab === 'ucl' && (
+              <UCLView ucl={state.ucl} uclHistory={state.uclHistory} teams={state.teams} onTeamClick={handleTeamClick} />
+            )}
+
+            {tab === 'transfers' && (
+              <TransferView transfers={state.transfers} transferHistory={state.transferHistory} teams={state.teams} onTeamClick={handleTeamClick} />
             )}
 
             {tab === 'goat' && <GOATRankings rankings={state.goatRankings} onPlayerClick={handlePlayerClick} />}
@@ -283,16 +285,36 @@ const Dashboard: React.FC = () => {
                 <p className="font-display text-xl">{state.retiredPlayers.length}</p>
               </div>
               <div className="bg-secondary/50 rounded p-2">
-                <p className="text-xs text-muted-foreground">Legends</p>
-                <p className="font-display text-xl">{Object.values(state.players).filter(p => p.isLegend && !p.retired).length}</p>
+                <p className="text-xs text-muted-foreground">Transfers</p>
+                <p className="font-display text-xl">{state.transferHistory.length}</p>
               </div>
             </div>
+
+            {/* UCL info */}
+            {state.uclHistory.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <p className="text-xs text-muted-foreground mb-1">⭐ LAST UCL WINNER</p>
+                <p className="text-sm font-medium text-primary">🏆 {state.uclHistory[state.uclHistory.length - 1].winner}</p>
+              </div>
+            )}
 
             {/* World Cup info */}
             {state.worldCupHistory.length > 0 && (
               <div className="mt-3 pt-3 border-t border-border">
                 <p className="text-xs text-muted-foreground mb-1">🌍 LAST WORLD CUP</p>
                 <p className="text-sm font-medium text-accent">🏆 {state.worldCupHistory[state.worldCupHistory.length - 1].winner}</p>
+              </div>
+            )}
+
+            {/* Survival mode status */}
+            {state.gameMode === 'survival' && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <p className="text-xs text-muted-foreground mb-2">⚔️ SURVIVAL MODE</p>
+                <p className="text-sm font-medium text-destructive">{state.survivalTeams.length} teams remaining</p>
+                <p className="text-xs text-muted-foreground">{state.eliminatedTeams.length} eliminated</p>
+                {state.survivalTeams.length <= 1 && state.survivalTeams.length > 0 && (
+                  <p className="text-sm font-display text-accent mt-1">🏆 WINNER: {state.teams[state.survivalTeams[0]]?.name || 'Unknown'}</p>
+                )}
               </div>
             )}
 
