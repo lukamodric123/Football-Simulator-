@@ -34,13 +34,10 @@ const Index: React.FC = () => {
           <div className="flex gap-1 overflow-x-auto pb-1">
             <span className="text-xs text-muted-foreground self-center px-1">T1</span>
             {allLeagues.filter(l => l.tier === 1).map(l => (
-              <button
-                key={l.id}
-                onClick={() => setSelectedLeague(l.id)}
+              <button key={l.id} onClick={() => setSelectedLeague(l.id)}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
                   selectedLeague === l.id ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                }`}
-              >
+                }`}>
                 {l.name}
               </button>
             ))}
@@ -48,13 +45,10 @@ const Index: React.FC = () => {
           <div className="flex gap-1 overflow-x-auto pb-1">
             <span className="text-xs text-muted-foreground self-center px-1">T2</span>
             {allLeagues.filter(l => l.tier === 2).map(l => (
-              <button
-                key={l.id}
-                onClick={() => setSelectedLeague(l.id)}
+              <button key={l.id} onClick={() => setSelectedLeague(l.id)}
                 className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
                   selectedLeague === l.id ? 'bg-primary text-primary-foreground' : 'bg-secondary/60 text-secondary-foreground hover:bg-secondary/80'
-                }`}
-              >
+                }`}>
                 {l.name}
               </button>
             ))}
@@ -63,11 +57,9 @@ const Index: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-xl w-full max-h-[400px] overflow-y-auto pr-2">
           {leagueDef.teams.map(t => (
-            <button
-              key={t.shortName}
-              onClick={() => initializeGame('manager', `${leagueDef.id}-${t.shortName.toLowerCase()}`)}
-              className="flex items-center gap-3 bg-card rounded-lg px-4 py-3 card-hover text-left transition-all hover:scale-[1.02]"
-            >
+            <button key={t.shortName}
+              onClick={() => initializeGame(selectedMode, `${leagueDef.id}-${t.shortName.toLowerCase()}`)}
+              className="flex items-center gap-3 bg-card rounded-lg px-4 py-3 card-hover text-left transition-all hover:scale-[1.02]">
               <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: t.color }} />
               <div>
                 <p className="font-medium">{t.name}</p>
@@ -90,7 +82,7 @@ const Index: React.FC = () => {
         <h1 className="font-display text-4xl mb-2">CHOOSE YOUR MODE</h1>
         <p className="text-muted-foreground mb-8">How do you want to experience the football universe?</p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl w-full">
           <button
             onClick={() => { setSelectedMode('manager'); setStep('team_select'); }}
             className="bg-card rounded-xl p-6 text-left card-hover transition-all hover:scale-[1.02] border border-border hover:border-primary"
@@ -98,11 +90,10 @@ const Index: React.FC = () => {
             <span className="text-4xl">🎯</span>
             <h3 className="font-display text-2xl mt-3">MANAGER MODE</h3>
             <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-              Take control of a club. Set tactics, approve transfers, choose lineups,
-              and lead your team to glory while AI manages the rest.
+              Take control of a club. Set tactics, manage transfers, and lead your team to glory.
             </p>
             <div className="mt-4 flex flex-wrap gap-1">
-              {['Set Tactics', 'Manage Squad', 'Control Budget'].map(f => (
+              {['Tactics', 'Transfers', 'Budget'].map(f => (
                 <span key={f} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">{f}</span>
               ))}
             </div>
@@ -115,12 +106,27 @@ const Index: React.FC = () => {
             <span className="text-4xl">🌍</span>
             <h3 className="font-display text-2xl mt-3">UNIVERSE MODE</h3>
             <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-              Sit back and watch the football world evolve. Observe dynasties rise,
-              legends emerge, and stories unfold across generations.
+              Watch the football world evolve. Observe dynasties, legends, and stories unfold.
             </p>
             <div className="mt-4 flex flex-wrap gap-1">
-              {['Auto Sim', 'Watch History', 'Track Legends'].map(f => (
+              {['Auto Sim', 'History', 'Legends'].map(f => (
                 <span key={f} className="text-xs bg-accent/10 text-accent px-2 py-0.5 rounded">{f}</span>
+              ))}
+            </div>
+          </button>
+
+          <button
+            onClick={() => initializeGame('survival')}
+            className="bg-card rounded-xl p-6 text-left card-hover transition-all hover:scale-[1.02] border border-border hover:border-destructive"
+          >
+            <span className="text-4xl">⚔️</span>
+            <h3 className="font-display text-2xl mt-3">SURVIVAL MODE</h3>
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              Teams are eliminated each season. Last team standing wins the ultimate title.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-1">
+              {['Elimination', 'Last Standing', 'Drama'].map(f => (
+                <span key={f} className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded">{f}</span>
               ))}
             </div>
           </button>
@@ -144,10 +150,10 @@ const Index: React.FC = () => {
       <div className="text-center z-10 px-4">
         <h1 className="font-display text-6xl sm:text-8xl mb-2 tracking-wider">ULTIMATE SOCCER</h1>
         <h2 className="font-display text-4xl sm:text-6xl text-primary mb-4 tracking-wider">SIMULATOR</h2>
-        <p className="text-xs text-accent font-display tracking-widest mb-8">EXPANDED EDITION · V2</p>
+        <p className="text-xs text-accent font-display tracking-widest mb-8">MULTIVERSE EDITION · V4</p>
         <p className="text-muted-foreground max-w-lg mx-auto mb-12 leading-relaxed">
-          A living football universe. Manage a club or watch history unfold across generations.
-          Legends emerge, dynasties rise, GOAT debates rage, and stories write themselves.
+          A living football universe. Manage a club, fight for survival, or watch history unfold.
+          Champions League, transfers, legends, and GOAT debates in every universe.
         </p>
 
         <button
@@ -157,12 +163,13 @@ const Index: React.FC = () => {
           START ⚽
         </button>
 
-        <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-2xl mx-auto text-center">
+        <div className="mt-16 grid grid-cols-2 sm:grid-cols-5 gap-6 max-w-3xl mx-auto text-center">
           {[
             { icon: '🏟️', label: '10 Leagues', sub: '186 Teams' },
-            { icon: '🏆', label: 'GOAT Debate', sub: 'All-Time Greats' },
+            { icon: '⭐', label: 'UCL', sub: '32 Team Draw' },
             { icon: '🌍', label: 'World Cup', sub: 'Every 4 Seasons' },
-            { icon: '↕️', label: 'Pro/Rel', sub: 'Rise & Fall' },
+            { icon: '💰', label: 'Transfers', sub: 'AI Market' },
+            { icon: '⚔️', label: 'Survival', sub: 'Last Standing' },
           ].map(f => (
             <div key={f.label}>
               <span className="text-3xl">{f.icon}</span>

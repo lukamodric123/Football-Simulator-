@@ -1,4 +1,4 @@
-import { NewsItem, GameState, Player, GOATEntry, WorldCup } from './types';
+import { NewsItem, GameState, Player, GOATEntry, WorldCup, UCLTournament } from './types';
 import { getPlayerOverall, calculateGOATScore } from './generator';
 
 const rand = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -247,6 +247,44 @@ export function generateWorldCupNews(wc: WorldCup, season: number): NewsItem[] {
       headline: `⭐ World Cup Golden Ball: ${wc.goldenBall.playerName} named tournament's best player!`,
       body: '',
       category: 'award',
+      week: 0,
+      season,
+      importance: 4,
+    });
+  }
+  return news;
+}
+
+export function generateUCLNews(ucl: UCLTournament, season: number): NewsItem[] {
+  const news: NewsItem[] = [];
+  if (ucl.winner) {
+    news.push({
+      id: `n${newsId++}`,
+      headline: `🏆⭐ CHAMPIONS LEAGUE: ${ucl.winner} are EUROPEAN CHAMPIONS! A glorious campaign reaches its climax.`,
+      body: '',
+      category: 'ucl',
+      week: 0,
+      season,
+      importance: 5,
+    });
+  }
+  if (ucl.topScorer) {
+    news.push({
+      id: `n${newsId++}`,
+      headline: `👟 UCL Top Scorer: ${ucl.topScorer.playerName} finishes with ${ucl.topScorer.goals} goals in the Champions League!`,
+      body: '',
+      category: 'ucl',
+      week: 0,
+      season,
+      importance: 4,
+    });
+  }
+  if (ucl.bestPlayer) {
+    news.push({
+      id: `n${newsId++}`,
+      headline: `⭐ UCL Best Player: ${ucl.bestPlayer.playerName} named Champions League's best!`,
+      body: '',
+      category: 'ucl',
       week: 0,
       season,
       importance: 4,

@@ -18,6 +18,7 @@ const categoryIcons: Record<string, string> = {
   legend: '🌟',
   retirement: '👋',
   takeover: '🏦',
+  ucl: '⭐',
 };
 
 const categoryColors: Record<string, string> = {
@@ -32,6 +33,7 @@ const categoryColors: Record<string, string> = {
   legend: 'border-l-accent',
   retirement: 'border-l-muted-foreground',
   takeover: 'border-l-accent',
+  ucl: 'border-l-primary',
 };
 
 const NewsFeed: React.FC<NewsFeedProps> = ({ news, limit = 20 }) => {

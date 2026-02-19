@@ -7,6 +7,7 @@ export interface Player {
   age: number;
   nationality: string;
   position: Position;
+  preferredFoot: 'left' | 'right' | 'both';
   attributes: PlayerAttributes;
   hiddenTraits: HiddenTraits;
   morale: number;
@@ -21,13 +22,15 @@ export interface Player {
   appearances: number;
   yellowCards: number;
   redCards: number;
+  cleanSheets: number;
   rating: number;
   potential: number;
   contractYears: number;
-  // V2 additions
+  // Career
   careerGoals: number;
   careerAssists: number;
   careerAppearances: number;
+  careerCleanSheets: number;
   trophies: number;
   individualAwards: string[];
   isLegend: boolean;
@@ -78,6 +81,7 @@ export interface SeasonRecord {
   assists: number;
   appearances: number;
   rating: number;
+  cleanSheets: number;
 }
 
 export interface Team {
@@ -92,7 +96,6 @@ export interface Team {
   fanMood: FanMood;
   personality: ClubPersonality;
   color: string;
-  // V2 additions
   titles: number;
   managerName: string;
   managerStyle: ManagerStyle;
@@ -107,8 +110,8 @@ export interface League {
   id: string;
   name: string;
   country: string;
-  tier: number; // 1 = top division, 2 = second division
-  linkedLeagueId?: string; // paired league for promotion/relegation
+  tier: number;
+  linkedLeagueId?: string;
   teams: string[];
   standings: Standing[];
   fixtures: Fixture[];
@@ -141,7 +144,7 @@ export interface Fixture {
 
 export interface MatchEvent {
   minute: number;
-  type: 'goal' | 'assist' | 'yellow_card' | 'red_card' | 'injury' | 'substitution';
+  type: 'goal' | 'assist' | 'yellow_card' | 'red_card' | 'injury' | 'substitution' | 'clean_sheet';
   playerId: string;
   teamId: string;
   detail?: string;
@@ -151,7 +154,7 @@ export interface NewsItem {
   id: string;
   headline: string;
   body: string;
-  category: 'transfer' | 'match' | 'injury' | 'award' | 'drama' | 'youth' | 'manager' | 'goat' | 'legend' | 'retirement' | 'takeover';
+  category: 'transfer' | 'match' | 'injury' | 'award' | 'drama' | 'youth' | 'manager' | 'goat' | 'legend' | 'retirement' | 'takeover' | 'ucl';
   week: number;
   season: number;
   importance: number;
@@ -171,14 +174,14 @@ export interface GOATEntry {
 }
 
 export interface AllTimeRecord {
-  type: 'goals' | 'assists' | 'appearances' | 'trophies';
+  type: 'goals' | 'assists' | 'appearances' | 'trophies' | 'clean_sheets';
   playerId: string;
   playerName: string;
   value: number;
   season: number;
 }
 
-export type GameMode = 'universe' | 'manager';
+export type GameMode = 'universe' | 'manager' | 'survival';
 
 export interface GameState {
   season: number;
@@ -191,7 +194,6 @@ export interface GameState {
   topScorers: { playerId: string; goals: number; leagueId: string }[];
   awards: Award[];
   initialized: boolean;
-  // V2 additions
   gameMode: GameMode;
   managedTeamId: string | null;
   goatRankings: GOATEntry[];
@@ -199,10 +201,16 @@ export interface GameState {
   retiredPlayers: Player[];
   seasonAwards: { season: number; awards: Award[] }[];
   totalSeasonsPlayed: number;
-  // V3 additions
   worldCup: WorldCup | null;
   worldCupHistory: { season: number; winner: string; goldenBoot?: string; goldenBall?: string }[];
   promotionLog: { season: number; promoted: { teamId: string; fromLeague: string; toLeague: string }[]; relegated: { teamId: string; fromLeague: string; toLeague: string }[] }[];
+  // V4 additions
+  ucl: UCLTournament | null;
+  uclHistory: { season: number; winner: string; topScorer?: string; bestPlayer?: string }[];
+  transfers: Transfer[];
+  transferHistory: Transfer[];
+  survivalTeams: string[]; // teams still alive in survival mode
+  eliminatedTeams: string[]; // teams eliminated in survival mode
 }
 
 export type GamePhase = 'pre_season' | 'in_season' | 'transfer_window' | 'end_season';
@@ -233,7 +241,7 @@ export interface WorldCup {
   knockoutFixtures: Fixture[];
   goldenBoot?: { playerId: string; playerName: string; goals: number };
   goldenBall?: { playerId: string; playerName: string };
-  winner?: string; // country name
+  winner?: string;
   awards: Award[];
 }
 
@@ -249,4 +257,39 @@ export interface WorldCupTeam {
   country: string;
   squad: Player[];
   rating: number;
+}
+
+// UCL types
+export interface UCLTournament {
+  season: number;
+  groups: UCLGroup[];
+  knockoutRound: 'group' | 'r16' | 'quarter' | 'semi' | 'final' | 'complete';
+  knockoutFixtures: Fixture[];
+  topScorer?: { playerId: string; playerName: string; goals: number };
+  bestPlayer?: { playerId: string; playerName: string };
+  winner?: string; // team name
+  winnerTeamId?: string;
+  awards: Award[];
+  qualifiedTeams: string[]; // team IDs that qualified
+}
+
+export interface UCLGroup {
+  name: string;
+  teamIds: string[];
+  fixtures: Fixture[];
+  standings: Standing[];
+}
+
+// Transfer types
+export interface Transfer {
+  id: string;
+  playerId: string;
+  playerName: string;
+  fromTeamId: string;
+  fromTeamName: string;
+  toTeamId: string;
+  toTeamName: string;
+  fee: number;
+  season: number;
+  type: 'buy' | 'free' | 'loan';
 }

@@ -97,6 +97,7 @@ export function generatePlayer(position: Position, reputation: number, ageRange?
     age,
     nationality: pick(NATIONALITIES),
     position,
+    preferredFoot: Math.random() > 0.75 ? 'left' : Math.random() > 0.95 ? 'both' : 'right',
     attributes: attrs,
     hiddenTraits: generateHiddenTraits(),
     morale: rand(60, 90),
@@ -111,12 +112,14 @@ export function generatePlayer(position: Position, reputation: number, ageRange?
     appearances: 0,
     yellowCards: 0,
     redCards: 0,
+    cleanSheets: 0,
     rating: 0,
     potential,
     contractYears: rand(1, 5),
     careerGoals: 0,
     careerAssists: 0,
     careerAppearances: 0,
+    careerCleanSheets: 0,
     trophies: 0,
     individualAwards: [],
     isLegend: isLegend || false,
@@ -227,6 +230,7 @@ export function agePlayer(player: Player): Player {
   updated.appearances = 0;
   updated.yellowCards = 0;
   updated.redCards = 0;
+  updated.cleanSheets = 0;
   updated.form = rand(50, 85);
   updated.fatigue = 0;
   updated.injured = false;
