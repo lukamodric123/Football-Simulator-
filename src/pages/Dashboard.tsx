@@ -10,6 +10,8 @@ import AwardsHistory from '@/components/game/AwardsHistory';
 import WorldCupView from '@/components/game/WorldCupView';
 import UCLView from '@/components/game/UCLView';
 import TransferView from '@/components/game/TransferView';
+import FinancialDashboard from '@/components/game/FinancialDashboard';
+import HallOfFame from '@/components/game/HallOfFame';
 import { LEAGUES } from '@/engine/data';
 
 type View = 'dashboard' | 'team' | 'player';
@@ -20,7 +22,7 @@ const Dashboard: React.FC = () => {
   const [view, setView] = useState<View>('dashboard');
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
-  const [tab, setTab] = useState<'standings' | 'results' | 'scorers' | 'goat' | 'awards' | 'worldcup' | 'ucl' | 'transfers'>('standings');
+  const [tab, setTab] = useState<'standings' | 'results' | 'scorers' | 'goat' | 'awards' | 'worldcup' | 'ucl' | 'transfers' | 'finance' | 'halloffame'>('standings');
   const [simming, setSimming] = useState(false);
 
   const league = state.leagues.find(l => l.id === selectedLeague);
@@ -159,7 +161,7 @@ const Dashboard: React.FC = () => {
         <div className="flex gap-1 overflow-x-auto pb-1">
           <span className="text-xs text-muted-foreground self-center px-1 whitespace-nowrap">T1</span>
           {tier1Leagues.map(l => (
-            <button key={l.id} onClick={() => { setSelectedLeague(l.id); if (['worldcup', 'ucl', 'transfers'].includes(tab)) setTab('standings'); }}
+            <button key={l.id} onClick={() => { setSelectedLeague(l.id); if (['worldcup', 'ucl', 'transfers', 'finance', 'halloffame'].includes(tab)) setTab('standings'); }}
               className={`px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
                 selectedLeague === l.id ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
               }`}>
@@ -170,7 +172,7 @@ const Dashboard: React.FC = () => {
         <div className="flex gap-1 overflow-x-auto pb-1">
           <span className="text-xs text-muted-foreground self-center px-1 whitespace-nowrap">T2</span>
           {tier2Leagues.map(l => (
-            <button key={l.id} onClick={() => { setSelectedLeague(l.id); if (['worldcup', 'ucl', 'transfers'].includes(tab)) setTab('standings'); }}
+            <button key={l.id} onClick={() => { setSelectedLeague(l.id); if (['worldcup', 'ucl', 'transfers', 'finance', 'halloffame'].includes(tab)) setTab('standings'); }}
               className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
                 selectedLeague === l.id ? 'bg-primary text-primary-foreground' : 'bg-secondary/60 text-secondary-foreground hover:bg-secondary/80'
               }`}>
@@ -185,14 +187,21 @@ const Dashboard: React.FC = () => {
         <div className="lg:col-span-2 space-y-4">
           {/* Tabs */}
           <div className="flex gap-1 bg-secondary/50 p-1 rounded-lg overflow-x-auto">
-            {(['standings', 'results', 'scorers', 'ucl', 'transfers', 'goat', 'awards', 'worldcup'] as const).map(t => (
+            {(['standings', 'results', 'scorers', 'ucl', 'transfers', 'goat', 'awards', 'worldcup', 'finance', 'halloffame'] as const).map(t => (
               <button key={t} onClick={() => setTab(t)}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium capitalize transition-colors whitespace-nowrap ${
                   tab === t ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground'
                 }`}>
-                {t === 'scorers' ? '⚽ Scorers' : t === 'goat' ? '👑 GOAT' : t === 'awards' ? '🏆 Awards' 
-                  : t === 'results' ? '📋 Results' : t === 'worldcup' ? '🌍 WC' 
-                  : t === 'ucl' ? '⭐ UCL' : t === 'transfers' ? '💰 Transfers' : '📊 Table'}
+                {t === 'scorers' ? '⚽ Scorers'
+                  : t === 'goat' ? '👑 GOAT'
+                  : t === 'awards' ? '🏆 Awards'
+                  : t === 'results' ? '📋 Results'
+                  : t === 'worldcup' ? '🌍 WC'
+                  : t === 'ucl' ? '⭐ UCL'
+                  : t === 'transfers' ? '💰 Transfers'
+                  : t === 'finance' ? '💎 Finance'
+                  : t === 'halloffame' ? '🌟 Hall of Fame'
+                  : '📊 Table'}
               </button>
             ))}
           </div>
@@ -263,6 +272,10 @@ const Dashboard: React.FC = () => {
             {tab === 'worldcup' && (
               <WorldCupView worldCup={state.worldCup!} worldCupHistory={state.worldCupHistory} />
             )}
+
+            {tab === 'finance' && <FinancialDashboard />}
+
+            {tab === 'halloffame' && <HallOfFame />}
           </div>
         </div>
 
