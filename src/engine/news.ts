@@ -14,6 +14,9 @@ const transferHeadlines = [
   'Deadline day chaos: {player} to {team}?',
   '{team} close in on deal for {player}',
   'Agent confirms {player} wants {team} move',
+  'EXCLUSIVE: Agent demands €{fee}M release clause for {player}',
+  '{player} rejects new deal — club may be forced to sell',
+  'Hijacked! {team} swoop in last-minute for {player}',
 ];
 
 const matchHeadlines = [
@@ -24,6 +27,9 @@ const matchHeadlines = [
   'Underdog {team} pull off massive upset',
   '{team} extend winning streak to new heights',
   'Derby day delight for {team} fans',
+  '🔥 VIRAL: Hat-trick hero powers {team} to glory',
+  'Stunning individual brilliance seals {team} victory',
+  'Last-minute winner sends {team} fans wild',
 ];
 
 const dramaHeadlines = [
@@ -35,6 +41,56 @@ const dramaHeadlines = [
   'Board meeting called at struggling {team}',
   'Ego clash between stars at {team}',
   'Secret transfer request leaked at {team}',
+  '{team} superstar demands wage hike or will leave',
+  'Locker room divided: captaincy row erupts at {team}',
+  'Pundit DESTROYS {team} performance: "Absolute shambles"',
+  '{team} star fined after training ground incident',
+];
+
+// NEW: Social media reaction headlines
+const socialMediaHeadlines = [
+  '🔥 TRENDING: #NeverForget{team} after shock defeat',
+  '📱 Fans FLOOD social media after {team} signing: "GOATED move"',
+  '🤣 {team} memes take over internet after comedy error',
+  '💬 {player} posts cryptic message — transfer hint?',
+  '📊 {player}\'s stats go viral: "Robotic consistency is unreal"',
+  '🔴 LIVE: {team} fans storm trending list after comeback win',
+  '😭 Football Twitter in mourning after {player} injury news',
+  '🎉 {team} unveil signing — fans react: "CLUB IS BACK"',
+  '👑 "{player} is the best in the world right now" — pundits agree',
+  '🗣️ {player} subliminally responds to critics via Instagram story',
+];
+
+// NEW: Superstar ego headlines
+const egoHeadlines = [
+  '⭐ {player} demands to be highest earner at {team}',
+  '💣 BOMBSHELL: {player} wants out of {team} — "I need UCL football"',
+  '😤 {player} refuses to celebrate goal against former club',
+  '🌟 {player} agent: "My client deserves Ballon d\'Or consideration"',
+  '💰 {player} rejects deal — "The money doesn\'t match my status"',
+  '👑 {player} reportedly upset at not wearing captain\'s armband',
+  '🔥 Row erupts: {player} feels {team} aren\'t good enough for him',
+  '📣 {player}\'s agent opens door to summer exit from {team}',
+];
+
+// NEW: Media pressure headlines
+const mediaPressureHeadlines = [
+  '📰 "SACK HIM NOW" — tabloids demand {team} manager exit',
+  '🎙️ Pundit: "{team} title challenge is falling apart"',
+  '⚠️ Board meets after {team}\'s humiliating loss — manager on thin ice',
+  '📉 "{team} are a mess" — former player slams club',
+  '🔥 {team} transfer strategy blasted: "Clueless summer window"',
+  '🗞️ Sport front page: "{team} in CRISIS"',
+  '💥 {team} dressing room leaks: morale at all-time low',
+];
+
+// NEW: Rivalry headlines
+const rivalryHeadlines = [
+  '⚔️ {team} vs rivals: Pre-match war of words heats up',
+  '🏆 Classic derby: {team} claim bragging rights in thriller',
+  '😡 Flashpoint! Scenes at {team} vs rivals match',
+  '📊 Historic record broken as {team} dominate old rivals',
+  '🔥 Derby day! Tension peaks as {team} face biggest rivals',
 ];
 
 const youthHeadlines = [
@@ -43,6 +99,7 @@ const youthHeadlines = [
   'Scouts flock to see {team} prodigy {player}',
   'Teenage sensation {player} scores on debut for {team}',
   '{player} tipped as future Ballon d\'Or winner',
+  '⚡ BREAKOUT: {player} earns rave reviews — "The next superstar"',
 ];
 
 const generalHeadlines = [
@@ -61,6 +118,8 @@ const goatHeadlines = [
   'GOAT debate sparks heated fan arguments about {player}',
   'Pundits split: Is {player} the greatest ever?',
   '{player}\'s legacy grows with every match',
+  '👑 "{player} is already a legend — no debate needed"',
+  '📊 The numbers don\'t lie: {player} is in GOAT territory',
 ];
 
 const legendHeadlines = [
@@ -68,6 +127,7 @@ const legendHeadlines = [
   '{player} dubbed "the next Messi" after incredible display',
   'Once-in-a-generation: {player} is the real deal',
   '{team}\'s {player} breaks records with stunning performance',
+  '🌟 ONCE IN A GENERATION: Scouts in awe of {player}',
 ];
 
 const retirementHeadlines = [
@@ -76,6 +136,7 @@ const retirementHeadlines = [
   '{player} retires with {goals} career goals and {trophies} trophies',
   'Football mourns as {player} plays final match',
   'Farewell to a legend: {player} calls time on career',
+  '🙏 Thank you, {player}: A career for the ages ends',
 ];
 
 const takeoverHeadlines = [
@@ -83,6 +144,8 @@ const takeoverHeadlines = [
   '{team} face financial crisis, budget slashed',
   'Ownership change at {team} promises new era',
   '{team} announce ambitious rebuild plan under new ownership',
+  '💰 Mega-rich consortium acquire {team}: Blank cheque budget incoming',
+  '🚨 {team} sold to foreign consortium — fans react with excitement',
 ];
 
 const managerHeadlines = [
@@ -90,44 +153,91 @@ const managerHeadlines = [
   'New manager bounce expected at {team}',
   '{team} appoint legendary coach as new boss',
   'Manager of the Year race wide open',
+  '🔥 BREAKING: {team} in emergency talks with manager over future',
+  '📋 {team} unveil new boss: "We have a clear project"',
+];
+
+const injuryHeadlines = [
+  '🏥 BLOW: {player} out for {weeks} weeks with injury',
+  '😱 {player} stretchered off — {team} fear the worst',
+  '💪 {player} makes comeback sooner than expected — {team} boosted',
+  '⚡ {player} cleared to return after injury scare at {team}',
 ];
 
 export function generateWeeklyNews(state: GameState): NewsItem[] {
   const news: NewsItem[] = [];
   const allTeams = Object.values(state.teams);
 
-  const count = rand(2, 5);
+  const count = rand(3, 6);
   for (let i = 0; i < count; i++) {
     const team = pick(allTeams);
     const league = state.leagues.find(l => l.id === team.leagueId);
     const player = team.squad.length > 0 ? pick(team.squad) : null;
-    const playerName = player ? `${player.firstName} ${player.lastName}` : 'Unknown';
+    const playerFull = player ? state.players[player.id] || player : null;
+    const playerName = playerFull ? `${playerFull.firstName} ${playerFull.lastName}` : 'Unknown';
+    const isStarPlayer = playerFull && (playerFull.isLegend || getPlayerOverall(playerFull) > 84);
 
     const roll = Math.random();
     let headline: string;
     let category: NewsItem['category'];
+    let importance = rand(1, 4);
 
-    if (roll < 0.15) {
-      headline = pick(transferHeadlines).replace('{player}', playerName).replace('{team}', team.name);
+    if (roll < 0.12) {
+      headline = pick(transferHeadlines).replace('{player}', playerName).replace('{team}', team.name).replace('{fee}', String(rand(50, 200)));
       category = 'transfer';
-    } else if (roll < 0.35) {
+    } else if (roll < 0.22) {
       headline = pick(matchHeadlines).replace('{team}', team.name);
       category = 'match';
-    } else if (roll < 0.50) {
-      headline = pick(dramaHeadlines).replace('{team}', team.name);
+    } else if (roll < 0.32) {
+      headline = pick(dramaHeadlines).replace('{team}', team.name).replace('{player}', playerName);
       category = 'drama';
-    } else if (roll < 0.60 && player && player.age < 22) {
+      importance = rand(2, 4);
+    } else if (roll < 0.42) {
+      // Social media reactions (new!)
+      headline = pick(socialMediaHeadlines).replace('{team}', team.name).replace('{player}', playerName);
+      category = 'drama';
+      importance = rand(2, 4);
+    } else if (roll < 0.50 && isStarPlayer) {
+      // Superstar ego event (new!)
+      headline = pick(egoHeadlines).replace('{player}', playerName).replace('{team}', team.name);
+      category = 'drama';
+      importance = 4;
+      if (playerFull && state.players[playerFull.id]) {
+        // Morale impact handled by news alone (narrative)
+      }
+    } else if (roll < 0.56) {
+      // Media pressure (new!)
+      if (team.fanMood === 'frustrated' || team.fanMood === 'angry') {
+        headline = pick(mediaPressureHeadlines).replace('{team}', team.name);
+        importance = 4;
+      } else {
+        headline = pick(matchHeadlines).replace('{team}', team.name);
+      }
+      category = 'manager';
+    } else if (roll < 0.62) {
+      // Rivalry (new!)
+      headline = pick(rivalryHeadlines).replace('{team}', team.name);
+      category = 'match';
+      importance = rand(3, 5);
+    } else if (roll < 0.68 && playerFull && playerFull.age < 22) {
       headline = pick(youthHeadlines).replace('{player}', playerName).replace('{team}', team.name);
       category = 'youth';
-    } else if (roll < 0.70 && player && player.isLegend) {
+      importance = rand(2, 4);
+    } else if (roll < 0.74 && playerFull && playerFull.isLegend) {
       headline = pick(legendHeadlines).replace('{player}', playerName).replace('{team}', team.name);
       category = 'legend';
+      importance = 4;
     } else if (roll < 0.80) {
       headline = pick(managerHeadlines).replace('{team}', team.name);
       category = 'manager';
-    } else if (roll < 0.88) {
+    } else if (roll < 0.86) {
       headline = pick(takeoverHeadlines).replace('{team}', team.name);
       category = 'takeover';
+      importance = rand(3, 5);
+    } else if (roll < 0.92 && playerFull && playerFull.injured) {
+      headline = pick(injuryHeadlines).replace('{player}', playerName).replace('{team}', team.name).replace('{weeks}', String(playerFull.injuryWeeks));
+      category = 'injury';
+      importance = rand(2, 4);
     } else {
       headline = pick(generalHeadlines).replace('{league}', league?.name || 'the league');
       category = 'match';
@@ -140,7 +250,7 @@ export function generateWeeklyNews(state: GameState): NewsItem[] {
       category,
       week: state.week,
       season: state.season,
-      importance: rand(1, 5),
+      importance,
     });
   }
 

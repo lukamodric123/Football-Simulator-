@@ -150,10 +150,12 @@ const Index: React.FC = () => {
       <div className="text-center z-10 px-4">
         <h1 className="font-display text-6xl sm:text-8xl mb-2 tracking-wider">ULTIMATE SOCCER</h1>
         <h2 className="font-display text-4xl sm:text-6xl text-primary mb-4 tracking-wider">SIMULATOR</h2>
-        <p className="text-xs text-accent font-display tracking-widest mb-8">MULTIVERSE EDITION · V4</p>
+        <p className="text-xs text-accent font-display tracking-widest mb-2">SUPERSTAR EDITION · V5</p>
+        <div className="flex items-center justify-center gap-2 mb-8">
+          <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded font-medium">⭐ MESSI · RONALDO · MBAPPÉ · HAALAND</span>
+        </div>
         <p className="text-muted-foreground max-w-lg mx-auto mb-12 leading-relaxed">
-          A living football universe. Manage a club, fight for survival, or watch history unfold.
-          Champions League, transfers, legends, and GOAT debates in every universe.
+          A living football universe with world-class superstars, social media drama, ego clashes, and the ultimate GOAT debate.
         </p>
 
         <button
@@ -165,11 +167,11 @@ const Index: React.FC = () => {
 
         <div className="mt-16 grid grid-cols-2 sm:grid-cols-5 gap-6 max-w-3xl mx-auto text-center">
           {[
+            { icon: '⭐', label: 'Superstars', sub: '30 Icons Seeded' },
             { icon: '🏟️', label: '10 Leagues', sub: '186 Teams' },
-            { icon: '⭐', label: 'UCL', sub: '32 Team Draw' },
-            { icon: '🌍', label: 'World Cup', sub: 'Every 4 Seasons' },
-            { icon: '💰', label: 'Transfers', sub: 'AI Market' },
-            { icon: '⚔️', label: 'Survival', sub: 'Last Standing' },
+            { icon: '💰', label: 'Transfers', sub: 'Realistic Prices' },
+            { icon: '📱', label: 'Social Media', sub: 'Ego & Drama' },
+            { icon: '👑', label: 'GOAT Debate', sub: 'Living History' },
           ].map(f => (
             <div key={f.label}>
               <span className="text-3xl">{f.icon}</span>

@@ -7,6 +7,7 @@ import { generateWeeklyNews, generateGOATNews, generateRetirementNews, generateS
 import { generateWorldCup, simulateWorldCupGroupStage, simulateWorldCupKnockouts } from './worldcup';
 import { generateUCL, simulateUCLGroupStage, simulateUCLKnockouts } from './ucl';
 import { simulateTransfers } from './transfers';
+import { generateSuperstars, getSuperstarsForTeam } from './superstars';
 
 interface GameContextType {
   state: GameState;
@@ -96,6 +97,23 @@ export function GameProvider({ children }: { children: ReactNode }) {
     for (const leagueDef of LEAGUES) {
       leagues.push(buildLeague(leagueDef, teams, players));
     }
+
+    // Inject superstars into top-tier teams
+    const allSuperstars = generateSuperstars();
+    const usedSuperstarIds = new Set<string>();
+    const tier1TeamIds = Object.values(teams)
+      .filter(t => leagues.find(l => l.id === t.leagueId)?.tier === 1)
+      .sort((a, b) => b.reputation - a.reputation);
+
+    for (const team of tier1TeamIds) {
+      const count = team.reputation >= 88 ? 3 : team.reputation >= 82 ? 2 : 1;
+      const stars = getSuperstarsForTeam(team.reputation, count, allSuperstars, usedSuperstarIds);
+      for (const star of stars) {
+        players[star.id] = star;
+        teams[team.id] = { ...teams[team.id], squad: [...teams[team.id].squad, star] };
+      }
+    }
+
     setState({
       ...initialState,
       season: 1,
@@ -104,7 +122,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       leagues,
       teams,
       players,
-      news: [{ id: 'n0', headline: '⚽ A new football universe is born! Season 1 begins.', body: '', category: 'match', week: 0, season: 1, importance: 5 }],
+      news: [
+        { id: 'n0', headline: '⚽ A new football universe is born! Season 1 begins.', body: '', category: 'match', week: 0, season: 1, importance: 5 },
+        { id: 'n1', headline: '⭐ WORLD-CLASS STARS have arrived! Check squads for legendary talent.', body: '', category: 'legend', week: 0, season: 1, importance: 5 },
+      ],
       initialized: true,
       gameMode: mode,
       managedTeamId: managedTeamId || null,

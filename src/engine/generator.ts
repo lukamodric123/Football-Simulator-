@@ -65,6 +65,15 @@ function generateHiddenTraits(): HiddenTraits {
 
 const personalGoals: PersonalGoal[] = ['money', 'fame', 'legacy', 'loyalty', 'playing_time', 'international'];
 
+// Realistic FC-style player value calculation
+export function calculateRealisticValue(overall: number, potential: number, age: number, position: Position): number {
+  const ageMultiplier = age <= 22 ? 1.5 : age <= 26 ? 1.3 : age <= 29 ? 1.0 : age <= 32 ? 0.6 : 0.3;
+  const potentialBonus = Math.max(0, potential - overall) * 2;
+  const baseValue = Math.pow(overall / 50, 3) * 20;
+  const positionMultiplier = ['ST', 'CAM', 'LW', 'RW'].includes(position) ? 1.2 : ['CDM', 'CB'].includes(position) ? 0.9 : 1.0;
+  return Math.max(1, Math.round((baseValue + potentialBonus) * ageMultiplier * positionMultiplier));
+}
+
 export function generatePlayer(position: Position, reputation: number, ageRange?: [number, number], isLegend?: boolean): Player {
   const age = ageRange ? rand(ageRange[0], ageRange[1]) : rand(18, 35);
   let attrs = generateAttributes(position, reputation);
@@ -90,6 +99,9 @@ export function generatePlayer(position: Position, reputation: number, ageRange?
     : 'midfielder'
     : undefined;
 
+  const value = calculateRealisticValue(overall, potential, age, position);
+  const wage = Math.round(value * 0.04 * rand(8, 15));
+
   return {
     id: uid(),
     firstName: pick(FIRST_NAMES),
@@ -105,8 +117,8 @@ export function generatePlayer(position: Position, reputation: number, ageRange?
     fatigue: rand(0, 30),
     injured: false,
     injuryWeeks: 0,
-    value: Math.round((overall / 10) * (potential / 10) * (1 - (age - 22) * 0.03) * rand(5, 15)),
-    wage: Math.round(overall * rand(1, 4)),
+    value,
+    wage,
     goals: 0,
     assists: 0,
     appearances: 0,
@@ -167,7 +179,7 @@ export function generateTeam(
     shortName,
     leagueId,
     reputation,
-    budget: Math.round(reputation * rand(1, 5)),
+    budget: Math.round(reputation * rand(2, 6)),
     squad,
     tactic: reputation > 80 ? pick(['possession', 'pressing']) : pick(tactics),
     fanMood: 'neutral',
@@ -223,6 +235,9 @@ export function agePlayer(player: Player): Player {
   }
 
   updated.attributes = attrs;
+
+  // Update value based on new attributes
+  updated.value = calculateRealisticValue(getPlayerOverall(updated), updated.potential, updated.age, updated.position);
 
   // Reset season stats
   updated.goals = 0;
