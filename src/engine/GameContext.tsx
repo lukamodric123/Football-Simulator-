@@ -19,6 +19,7 @@ interface GameContextType {
   getPlayer: (id: string) => Player | undefined;
   getLeagueStandings: (leagueId: string) => (Standing & { team: Team })[];
   getTopScorers: (leagueId: string) => { player: Player; team: Team; goals: number }[];
+  makeManagerTransfer: (playerId: string, fee: number, wage: number, contractYears: number) => { success: boolean; message: string };
 }
 
 const GameContext = createContext<GameContextType | null>(null);
@@ -643,6 +644,87 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const getTeam = useCallback((id: string) => state.teams[id], [state.teams]);
   const getPlayer = useCallback((id: string) => state.players[id], [state.players]);
 
+  const makeManagerTransfer = useCallback((playerId: string, fee: number, wage: number, contractYears: number): { success: boolean; message: string } => {
+    const managedId = state.managedTeamId;
+    if (!managedId) return { success: false, message: 'No managed team.' };
+    const managedTeam = state.teams[managedId];
+    if (!managedTeam) return { success: false, message: 'Team not found.' };
+    if (fee > managedTeam.budget) return { success: false, message: 'Insufficient budget.' };
+    if (managedTeam.squad.filter(p => !p.retired).length >= 30) return { success: false, message: 'Squad is full (30 max).' };
+
+    const player = state.players[playerId];
+    if (!player || player.retired) return { success: false, message: 'Player unavailable.' };
+
+    // Find source team
+    let sourceTeamId: string | null = null;
+    for (const [tid, team] of Object.entries(state.teams)) {
+      if (team.squad.some(p => p.id === playerId)) { sourceTeamId = tid; break; }
+    }
+
+    setState(prev => {
+      const updatedTeams = { ...prev.teams };
+      const updatedPlayers = { ...prev.players };
+      const pName = `${player.firstName} ${player.lastName}`;
+
+      // Remove from source team
+      if (sourceTeamId && updatedTeams[sourceTeamId]) {
+        updatedTeams[sourceTeamId] = {
+          ...updatedTeams[sourceTeamId],
+          squad: updatedTeams[sourceTeamId].squad.filter(p => p.id !== playerId),
+          budget: updatedTeams[sourceTeamId].budget + fee,
+        };
+      }
+
+      // Update player
+      updatedPlayers[playerId] = { ...player, wage, contractYears, morale: Math.min(99, player.morale + 15) };
+
+      // Add to managed team
+      updatedTeams[managedId] = {
+        ...updatedTeams[managedId],
+        squad: [...updatedTeams[managedId].squad, updatedPlayers[playerId]],
+        budget: Math.max(0, updatedTeams[managedId].budget - fee),
+      };
+
+      const transfer: Transfer = {
+        id: `mt${Date.now()}`,
+        playerId,
+        playerName: pName,
+        fromTeamId: sourceTeamId || 'free',
+        fromTeamName: sourceTeamId ? prev.teams[sourceTeamId]?.name || 'Unknown' : 'Free Agent',
+        toTeamId: managedId,
+        toTeamName: managedTeam.name,
+        fee,
+        season: prev.season,
+        type: fee > 0 ? 'buy' : 'free',
+      };
+
+      const newsItem = {
+        id: `mn${Date.now()}`,
+        headline: fee > 50
+          ? `💥 BLOCKBUSTER: ${managedTeam.name} sign ${pName} for €${fee}M!`
+          : fee > 0
+          ? `📝 ${managedTeam.name} complete signing of ${pName} (€${fee}M).`
+          : `📋 ${managedTeam.name} sign free agent ${pName}.`,
+        body: '',
+        category: 'transfer' as const,
+        week: prev.week,
+        season: prev.season,
+        importance: fee > 50 ? 5 : 3,
+      };
+
+      return {
+        ...prev,
+        teams: updatedTeams,
+        players: updatedPlayers,
+        transfers: [...prev.transfers, transfer],
+        transferHistory: [...prev.transferHistory, transfer],
+        news: [newsItem, ...prev.news].slice(0, 300),
+      };
+    });
+
+    return { success: true, message: 'Transfer complete!' };
+  }, [state.managedTeamId, state.teams, state.players]);
+
   const getLeagueStandings = useCallback((leagueId: string) => {
     const league = state.leagues.find(l => l.id === leagueId);
     if (!league) return [];
@@ -675,7 +757,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, [state.leagues, state.teams, state.players]);
 
   return (
-    <GameContext.Provider value={{ state, initializeGame, simulateWeek, simulateMultipleWeeks, advanceToNextSeason, getTeam, getPlayer, getLeagueStandings, getTopScorers }}>
+    <GameContext.Provider value={{ state, initializeGame, simulateWeek, simulateMultipleWeeks, advanceToNextSeason, getTeam, getPlayer, getLeagueStandings, getTopScorers, makeManagerTransfer }}>
       {children}
     </GameContext.Provider>
   );
