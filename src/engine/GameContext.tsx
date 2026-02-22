@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { GameState, League, Standing, Team, Player, Award, GOATEntry, AllTimeRecord, GameMode, SeasonRecord, Transfer, UCLTournament } from './types';
+import { GameState, League, Standing, Team, Player, Award, GOATEntry, AllTimeRecord, GameMode, SeasonRecord, Transfer, UCLTournament, CareerPlayer, StoryArc } from './types';
 import { LEAGUES } from './data';
 import { generateTeam, getPlayerOverall, agePlayer, shouldRetire, generateYouthPlayer, calculateGOATScore, generatePlayer, uid } from './generator';
 import { generateFixtures, simulateMatch } from './simulation';
@@ -12,6 +12,7 @@ import { generateSuperstars, getSuperstarsForTeam } from './superstars';
 interface GameContextType {
   state: GameState;
   initializeGame: (mode: GameMode, managedTeamId?: string) => void;
+  initializeCareerMode: (playerName: string, position: string, nationality: string, startType: 'youth' | 'small_club' | 'big_club', teamId: string) => void;
   simulateWeek: () => void;
   simulateMultipleWeeks: (count: number) => void;
   advanceToNextSeason: () => void;
@@ -57,6 +58,9 @@ const initialState: GameState = {
   transferHistory: [],
   survivalTeams: [],
   eliminatedTeams: [],
+  careerPlayer: null,
+  storyArcs: [],
+  ballonDorHistory: [],
 };
 
 function buildLeague(leagueDef: typeof LEAGUES[0], teams: Record<string, Team>, players: Record<string, Player>) {
@@ -143,6 +147,93 @@ export function GameProvider({ children }: { children: ReactNode }) {
       transfers: [],
       transferHistory: [],
       survivalTeams: mode === 'survival' ? Object.keys(teams) : [],
+      eliminatedTeams: [],
+      careerPlayer: null,
+      storyArcs: [],
+      ballonDorHistory: [],
+    });
+  }, []);
+
+  const initializeCareerMode = useCallback((playerName: string, position: string, nationality: string, startType: 'youth' | 'small_club' | 'big_club', teamId: string) => {
+    // First initialize a normal game
+    const teams: Record<string, Team> = {};
+    const players: Record<string, Player> = {};
+    const leagues: League[] = [];
+    for (const leagueDef of LEAGUES) {
+      leagues.push(buildLeague(leagueDef, teams, players));
+    }
+
+    // Inject superstars
+    const allSuperstars = generateSuperstars();
+    const usedSuperstarIds = new Set<string>();
+    const tier1TeamIds = Object.values(teams)
+      .filter(t => leagues.find(l => l.id === t.leagueId)?.tier === 1)
+      .sort((a, b) => b.reputation - a.reputation);
+    for (const team of tier1TeamIds) {
+      const count = team.reputation >= 88 ? 3 : team.reputation >= 82 ? 2 : 1;
+      const stars = getSuperstarsForTeam(team.reputation, count, allSuperstars, usedSuperstarIds);
+      for (const star of stars) {
+        players[star.id] = star;
+        teams[team.id] = { ...teams[team.id], squad: [...teams[team.id].squad, star] };
+      }
+    }
+
+    // Create career player
+    const pos = (position || 'CM') as any;
+    const repBase = startType === 'big_club' ? 70 : startType === 'small_club' ? 55 : 40;
+    const ageBase = startType === 'youth' ? 17 : 20;
+    const careerPlayerData = generatePlayer(pos, repBase, [ageBase, ageBase + 1]);
+    const nameParts = playerName.trim().split(' ');
+    careerPlayerData.firstName = nameParts[0] || 'Alex';
+    careerPlayerData.lastName = nameParts.slice(1).join(' ') || 'Player';
+    careerPlayerData.nationality = nationality || 'England';
+    careerPlayerData.potential = Math.min(99, careerPlayerData.potential + 15); // High potential
+    players[careerPlayerData.id] = careerPlayerData;
+
+    // Add to team
+    if (teams[teamId]) {
+      teams[teamId] = { ...teams[teamId], squad: [...teams[teamId].squad, careerPlayerData] };
+    }
+
+    const careerPlayer: CareerPlayer = {
+      playerId: careerPlayerData.id,
+      customName: playerName,
+      startType,
+      currentTeamId: teamId,
+      seasonNumber: 0,
+      isCaptain: false,
+      fame: startType === 'big_club' ? 20 : 5,
+      ballonDorCount: 0,
+      careerHighlight: 'Career begins!',
+      storyArcs: [{
+        id: 'arc_0',
+        type: startType === 'youth' ? 'rise' : startType === 'small_club' ? 'underdog' : 'rise',
+        title: startType === 'youth' ? 'Academy Graduate' : startType === 'small_club' ? 'Small Town Hero' : 'The Chosen One',
+        description: `${playerName} begins their professional career.`,
+        season: 1,
+        resolved: false,
+      }],
+    };
+
+    setState({
+      ...initialState,
+      season: 1,
+      week: 0,
+      phase: 'in_season',
+      leagues,
+      teams,
+      players,
+      news: [
+        { id: 'n0', headline: `⚽ A new football universe is born! Season 1 begins.`, body: '', category: 'match', week: 0, season: 1, importance: 5 },
+        { id: 'n_career', headline: `🌟 NEW CAREER: ${playerName} joins ${teams[teamId]?.name || 'a club'} as a ${pos}!`, body: '', category: 'youth', week: 0, season: 1, importance: 5 },
+      ],
+      initialized: true,
+      gameMode: 'career',
+      managedTeamId: teamId,
+      careerPlayer,
+      storyArcs: careerPlayer.storyArcs,
+      ballonDorHistory: [],
+      survivalTeams: [],
       eliminatedTeams: [],
     });
   }, []);
@@ -613,6 +704,79 @@ export function GameProvider({ children }: { children: ReactNode }) {
       const goatNews = generateGOATNews(goatRankings, newSeason);
       const newSeasonNews = generateNewSeasonNews(newSeason);
 
+      // --- Dynamic Ballon d'Or Ceremony ---
+      const ballonDorHistory = [...prev.ballonDorHistory];
+      const ballonDorNews: any[] = [];
+      if (bestPlayer) {
+        const bdName = `${bestPlayer.firstName} ${bestPlayer.lastName}`;
+        const bdTeam = Object.values(updatedTeams).find(t => t.squad.some(p => p.id === bestPlayer!.id));
+        ballonDorHistory.push({ season: prev.season, playerId: bestPlayer.id, playerName: bdName, teamName: bdTeam?.name || '' });
+        ballonDorNews.push({
+          id: `n_bdo_${prev.season}`,
+          headline: `🎭✨ BALLON D'OR CEREMONY: ${bdName} wins the golden ball! "${bdName} is the best player in the world" — standing ovation at the gala.`,
+          body: '',
+          category: 'award' as const,
+          week: 0,
+          season: prev.season,
+          importance: 5,
+        });
+      }
+
+      // --- Story Arc Generation ---
+      const newStoryArcs: StoryArc[] = [...prev.storyArcs];
+      let updatedCareerPlayer = prev.careerPlayer ? { ...prev.careerPlayer } : null;
+
+      // Generate story arcs for notable players
+      for (const p of Object.values(updatedPlayers)) {
+        if (p.retired) continue;
+        const ovr = getPlayerOverall(p);
+        const pName = `${p.firstName} ${p.lastName}`;
+        const pTeam = Object.values(updatedTeams).find(t => t.squad.some(sq => sq.id === p.id));
+
+        // Rise arc: young player with breakout season
+        if (p.age <= 22 && p.goals >= 10 && Math.random() < 0.3) {
+          newStoryArcs.push({ id: `arc_${prev.season}_${p.id}_rise`, type: 'rise', title: `The Rise of ${pName}`, description: `${pName} (${p.age}) is taking the football world by storm with ${p.goals} goals.`, season: prev.season, resolved: false });
+        }
+        // Fall arc: declining legend
+        if (p.isLegend && ovr < 70 && p.age > 32 && Math.random() < 0.4) {
+          newStoryArcs.push({ id: `arc_${prev.season}_${p.id}_fall`, type: 'fall', title: `${pName}'s Twilight`, description: `Legend ${pName} is struggling. Is this the end?`, season: prev.season, resolved: false });
+        }
+        // Comeback arc: injured player returns strong
+        if (p.goals >= 8 && p.seasonHistory.length > 1 && p.seasonHistory[p.seasonHistory.length - 1]?.goals < 3 && Math.random() < 0.3) {
+          newStoryArcs.push({ id: `arc_${prev.season}_${p.id}_comeback`, type: 'comeback', title: `${pName}'s Redemption`, description: `After a difficult season, ${pName} has bounced back with ${p.goals} goals!`, season: prev.season, resolved: true });
+        }
+        // Dynasty arc: team winning multiple titles
+        if (pTeam && pTeam.titles >= 3 && Math.random() < 0.15) {
+          newStoryArcs.push({ id: `arc_${prev.season}_dynasty_${pTeam.id}`, type: 'dynasty', title: `${pTeam.name} Dynasty`, description: `${pTeam.name} continue their dominance with ${pTeam.titles} titles.`, season: prev.season, resolved: false });
+        }
+      }
+
+      // Career player story updates
+      if (updatedCareerPlayer && updatedPlayers[updatedCareerPlayer.playerId]) {
+        const cp = updatedPlayers[updatedCareerPlayer.playerId];
+        updatedCareerPlayer.seasonNumber += 1;
+        // Fame based on goals and awards
+        updatedCareerPlayer.fame = Math.min(100, updatedCareerPlayer.fame + cp.goals * 2 + cp.assists + (cp.individualAwards.length > 0 ? 15 : 0));
+        // Check if won Ballon d'Or
+        if (bestPlayer && bestPlayer.id === cp.id) {
+          updatedCareerPlayer.ballonDorCount += 1;
+          updatedCareerPlayer.careerHighlight = `Won Ballon d'Or in Season ${prev.season}!`;
+          updatedCareerPlayer.storyArcs.push({ id: `arc_bdo_${prev.season}`, type: 'rise', title: 'The Best in the World', description: `${updatedCareerPlayer.customName} wins the Ballon d'Or!`, season: prev.season, resolved: true });
+        }
+        // Career milestones
+        if (cp.careerGoals >= 100 && !updatedCareerPlayer.storyArcs.some(a => a.title.includes('100 Goals'))) {
+          updatedCareerPlayer.storyArcs.push({ id: `arc_100g_${prev.season}`, type: 'rise', title: '100 Goals Club', description: `${updatedCareerPlayer.customName} reaches 100 career goals!`, season: prev.season, resolved: true });
+        }
+        // Captaincy
+        if (cp.age >= 24 && cp.hiddenTraits.leadership > 75 && !updatedCareerPlayer.isCaptain) {
+          updatedCareerPlayer.isCaptain = true;
+          updatedCareerPlayer.storyArcs.push({ id: `arc_capt_${prev.season}`, type: 'rise', title: 'Captain\'s Armband', description: `${updatedCareerPlayer.customName} is named team captain!`, season: prev.season, resolved: true });
+        }
+      }
+
+      // Keep only last 30 story arcs
+      const trimmedArcs = newStoryArcs.slice(-30);
+
       return {
         ...prev,
         season: newSeason,
@@ -621,7 +785,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         leagues: readyLeagues,
         teams: updatedTeams,
         players: updatedPlayers,
-        news: [newSeasonNews, ...uclNews, ...transferNews, ...wcNews, ...promotionNews, ...goatNews, ...awardNews, ...retirementNews, ...prev.news].slice(0, 300),
+        news: [newSeasonNews, ...ballonDorNews, ...uclNews, ...transferNews, ...wcNews, ...promotionNews, ...goatNews, ...awardNews, ...retirementNews, ...prev.news].slice(0, 300),
         awards: [...seasonAwards, ...(ucl.awards || []), ...(worldCup?.awards || []), ...prev.awards],
         goatRankings,
         allTimeRecords,
@@ -637,6 +801,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
         transferHistory: [...prev.transferHistory, ...seasonTransfers],
         survivalTeams,
         eliminatedTeams,
+        careerPlayer: updatedCareerPlayer,
+        storyArcs: trimmedArcs,
+        ballonDorHistory,
       };
     });
   }, []);
@@ -757,7 +924,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, [state.leagues, state.teams, state.players]);
 
   return (
-    <GameContext.Provider value={{ state, initializeGame, simulateWeek, simulateMultipleWeeks, advanceToNextSeason, getTeam, getPlayer, getLeagueStandings, getTopScorers, makeManagerTransfer }}>
+    <GameContext.Provider value={{ state, initializeGame, initializeCareerMode, simulateWeek, simulateMultipleWeeks, advanceToNextSeason, getTeam, getPlayer, getLeagueStandings, getTopScorers, makeManagerTransfer }}>
       {children}
     </GameContext.Provider>
   );
