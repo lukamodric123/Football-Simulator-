@@ -181,7 +181,30 @@ export interface AllTimeRecord {
   season: number;
 }
 
-export type GameMode = 'universe' | 'manager' | 'survival';
+export type GameMode = 'universe' | 'manager' | 'survival' | 'career';
+
+// Player Career Mode types
+export interface CareerPlayer {
+  playerId: string;
+  customName: string;
+  startType: 'youth' | 'small_club' | 'big_club';
+  currentTeamId: string;
+  seasonNumber: number; // career seasons played
+  isCaptain: boolean;
+  fame: number; // 0-100
+  ballonDorCount: number;
+  careerHighlight: string;
+  storyArcs: StoryArc[];
+}
+
+export interface StoryArc {
+  id: string;
+  type: 'rise' | 'fall' | 'comeback' | 'rivalry' | 'dynasty' | 'underdog' | 'betrayal' | 'redemption';
+  title: string;
+  description: string;
+  season: number;
+  resolved: boolean;
+}
 
 export interface GameState {
   season: number;
@@ -211,6 +234,10 @@ export interface GameState {
   transferHistory: Transfer[];
   survivalTeams: string[]; // teams still alive in survival mode
   eliminatedTeams: string[]; // teams eliminated in survival mode
+  // V6 additions
+  careerPlayer: CareerPlayer | null;
+  storyArcs: StoryArc[];
+  ballonDorHistory: { season: number; playerId: string; playerName: string; teamName: string }[];
 }
 
 export type GamePhase = 'pre_season' | 'in_season' | 'transfer_window' | 'end_season';

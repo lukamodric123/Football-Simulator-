@@ -13,6 +13,7 @@ import TransferView from '@/components/game/TransferView';
 import FinancialDashboard from '@/components/game/FinancialDashboard';
 import HallOfFame from '@/components/game/HallOfFame';
 import TransferHub from '@/components/game/TransferHub';
+import CareerPanel from '@/components/game/CareerPanel';
 import { LEAGUES } from '@/engine/data';
 
 type View = 'dashboard' | 'team' | 'player';
@@ -103,10 +104,12 @@ const Dashboard: React.FC = () => {
             <span className="text-muted-foreground">Season {state.season} · Week {state.week}</span>
             <span className={`text-xs px-2 py-0.5 rounded font-medium ${
               state.gameMode === 'manager' ? 'bg-primary/20 text-primary' 
+              : state.gameMode === 'career' ? 'bg-accent/20 text-accent'
               : state.gameMode === 'survival' ? 'bg-destructive/20 text-destructive'
               : 'bg-accent/20 text-accent'
             }`}>
               {state.gameMode === 'manager' ? `🎯 Manager: ${managedTeam?.shortName || ''}` 
+               : state.gameMode === 'career' ? `🌟 Career: ${state.careerPlayer?.customName || ''}`
                : state.gameMode === 'survival' ? `⚔️ Survival: ${state.survivalTeams.length} left`
                : '🌍 Universe Mode'}
             </span>
@@ -190,7 +193,7 @@ const Dashboard: React.FC = () => {
           <div className="flex gap-1 bg-secondary/50 p-1 rounded-lg overflow-x-auto">
             {([
               'standings', 'results', 'scorers',
-              ...(state.gameMode === 'manager' ? ['signing' as const] : []),
+              ...((state.gameMode === 'manager' || state.gameMode === 'career') ? ['signing' as const] : []),
               'ucl', 'transfers', 'goat', 'awards', 'worldcup', 'finance', 'halloffame',
             ] as const).map(t => (
               <button key={t} onClick={() => setTab(t)}
@@ -297,6 +300,17 @@ const Dashboard: React.FC = () => {
 
         {/* Right Sidebar */}
         <div className="space-y-4">
+          {/* Career Panel */}
+          {state.gameMode === 'career' && state.careerPlayer && state.players[state.careerPlayer.playerId] && (
+            <CareerPanel
+              careerPlayer={state.careerPlayer}
+              player={state.players[state.careerPlayer.playerId]}
+              team={state.careerPlayer.currentTeamId ? getTeam(state.careerPlayer.currentTeamId) : undefined}
+              storyArcs={state.storyArcs}
+              ballonDorHistory={state.ballonDorHistory}
+              onPlayerClick={handlePlayerClick}
+            />
+          )}
           {/* Season Info Card */}
           <div className="bg-card rounded-lg p-4">
             <h3 className="font-display text-lg text-muted-foreground mb-3">📊 UNIVERSE STATUS</h3>
