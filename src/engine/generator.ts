@@ -173,6 +173,9 @@ export function generateTeam(
   color: string
 ): Team {
   const squad = generateSquad(reputation);
+  const wageTotal = squad.reduce((s, p) => s + p.wage, 0);
+  const stadiumLevel = reputation >= 90 ? 5 : reputation >= 80 ? 4 : reputation >= 70 ? 3 : reputation >= 55 ? 2 : 1;
+  const stadiumCapacity = stadiumLevel * 15000 + rand(0, 5000);
   return {
     id: `${leagueId}-${shortName.toLowerCase()}`,
     name,
@@ -188,6 +191,16 @@ export function generateTeam(
     titles: 0,
     managerName: generateManagerName(),
     managerStyle: pick(managerStyles),
+    stadium: {
+      name: `${name} Stadium`,
+      capacity: stadiumCapacity,
+      level: stadiumLevel,
+      atmosphere: rand(50, 90),
+      upgradeCost: (6 - stadiumLevel) * 50,
+    },
+    ffpWarning: false,
+    trainingIntensity: 'medium',
+    wageTotal,
   };
 }
 

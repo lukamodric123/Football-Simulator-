@@ -1,4 +1,4 @@
-import { WorldCup, WorldCupGroup, WorldCupTeam, Player, Standing, Fixture, Award } from './types';
+import { WorldCup, WorldCupGroup, WorldCupTeam, Player, Standing, Fixture, Award, Position } from './types';
 import { WORLD_CUP_NATIONS } from './data';
 import { generatePlayer, getPlayerOverall, uid } from './generator';
 import { simulateMatch } from './simulation';
@@ -55,6 +55,10 @@ function createWCTeamAsTeam(wt: WorldCupTeam) {
     titles: 0,
     managerName: '',
     managerStyle: 'tactical_genius' as const,
+    stadium: { name: 'World Cup Venue', capacity: 60000, level: 5, atmosphere: 95, upgradeCost: 0 },
+    ffpWarning: false,
+    trainingIntensity: 'medium' as const,
+    wageTotal: 0,
   };
 }
 
@@ -197,14 +201,28 @@ export function simulateWorldCupKnockouts(wc: WorldCup, allPlayers: Record<strin
 
   // R16 → QF → SF → Final
   const r16Winners = simulateRound(qualified);
+  const r16Losers = getRoundLosers(qualified, r16Winners);
   const qfWinners = simulateRound(r16Winners);
   const sfWinners = simulateRound(qfWinners);
+  const sfLosers = getRoundLosers(qfWinners, sfWinners);
+  
+  // Third place match
+  const thirdPlaceTeams = sfLosers.length >= 2 ? sfLosers : [];
+  let thirdPlace: WorldCupTeam | undefined;
+  if (thirdPlaceTeams.length >= 2) {
+    const tpWinners = simulateRound(thirdPlaceTeams);
+    thirdPlace = tpWinners[0];
+  }
+
   const finalWinners = simulateRound(sfWinners);
   const champion = finalWinners[0];
+  const runnerUp = sfWinners.find(t => t.id !== champion?.id);
 
   // Calculate awards
   const goalScorers: Record<string, { name: string; goals: number }> = {};
+  const gkCleanSheets: Record<string, { name: string; cleanSheets: number; country: string }> = {};
   const allFixtures = [...wc.groups.flatMap(g => g.fixtures), ...knockoutFixtures];
+  
   for (const f of allFixtures) {
     for (const e of f.events) {
       if (e.type === 'goal') {
@@ -215,14 +233,53 @@ export function simulateWorldCupKnockouts(wc: WorldCup, allPlayers: Record<strin
           goalScorers[e.playerId].goals++;
         }
       }
+      if (e.type === 'clean_sheet') {
+        const p = updatedPlayers[e.playerId];
+        if (p && p.position === 'GK') {
+          const name = `${p.firstName} ${p.lastName}`;
+          if (!gkCleanSheets[e.playerId]) gkCleanSheets[e.playerId] = { name, cleanSheets: 0, country: p.nationality };
+          gkCleanSheets[e.playerId].cleanSheets++;
+        }
+      }
+    }
+  }
+
+  // Track GK clean sheets from match results
+  for (const f of allFixtures) {
+    if (!f.played) continue;
+    const homeTeamWT = allTeams.find(t => t.id === f.homeTeamId);
+    const awayTeamWT = allTeams.find(t => t.id === f.awayTeamId);
+    if (f.awayGoals === 0 && homeTeamWT) {
+      const gk = homeTeamWT.squad.find(p => p.position === 'GK');
+      if (gk) {
+        const name = `${gk.firstName} ${gk.lastName}`;
+        if (!gkCleanSheets[gk.id]) gkCleanSheets[gk.id] = { name, cleanSheets: 0, country: gk.nationality };
+        gkCleanSheets[gk.id].cleanSheets++;
+      }
+    }
+    if (f.homeGoals === 0 && awayTeamWT) {
+      const gk = awayTeamWT.squad.find(p => p.position === 'GK');
+      if (gk) {
+        const name = `${gk.firstName} ${gk.lastName}`;
+        if (!gkCleanSheets[gk.id]) gkCleanSheets[gk.id] = { name, cleanSheets: 0, country: gk.nationality };
+        gkCleanSheets[gk.id].cleanSheets++;
+      }
     }
   }
 
   const topScorer = Object.entries(goalScorers).sort((a, b) => b[1].goals - a[1].goals)[0];
+  const topGK = Object.entries(gkCleanSheets).sort((a, b) => b[1].cleanSheets - a[1].cleanSheets)[0];
   const awards: Award[] = [];
   
   if (topScorer) {
     awards.push({ name: 'WC Golden Boot', playerId: topScorer[0], playerName: topScorer[1].name, season: wc.season, value: topScorer[1].goals });
+  }
+
+  // Golden Glove - best GK
+  let goldenGlove: { playerId: string; playerName: string; cleanSheets: number } | undefined;
+  if (topGK) {
+    goldenGlove = { playerId: topGK[0], playerName: topGK[1].name, cleanSheets: topGK[1].cleanSheets };
+    awards.push({ name: 'WC Golden Glove', playerId: topGK[0], playerName: topGK[1].name, season: wc.season, value: topGK[1].cleanSheets });
   }
 
   // Golden Ball - best player (pick from champion team)
@@ -234,16 +291,49 @@ export function simulateWorldCupKnockouts(wc: WorldCup, allPlayers: Record<strin
     }
   }
 
+  // Team of the Tournament - best XI from all teams
+  const teamOfTournament = buildTeamOfTournament(allTeams, updatedPlayers);
+  for (const tot of teamOfTournament) {
+    awards.push({ name: 'WC Team of Tournament', playerId: tot.playerId, playerName: tot.playerName, season: wc.season });
+  }
+
   return {
     worldCup: {
       ...wc,
       knockoutRound: 'complete',
       knockoutFixtures,
       winner: champion?.country,
+      runnerUp: runnerUp?.country,
+      thirdPlace: thirdPlace?.country,
       goldenBoot: topScorer ? { playerId: topScorer[0], playerName: topScorer[1].name, goals: topScorer[1].goals } : undefined,
       goldenBall: champion?.squad[0] ? { playerId: champion.squad[0].id, playerName: `${champion.squad[0].firstName} ${champion.squad[0].lastName}` } : undefined,
+      goldenGlove,
+      teamOfTournament,
       awards,
     },
     updatedPlayers,
   };
+}
+
+function getRoundLosers(entrants: WorldCupTeam[], winners: WorldCupTeam[]): WorldCupTeam[] {
+  return entrants.filter(t => !winners.some(w => w.id === t.id));
+}
+
+function buildTeamOfTournament(allTeams: WorldCupTeam[], players: Record<string, Player>): { playerId: string; playerName: string; position: Position; country: string }[] {
+  const positions: Position[] = ['GK', 'CB', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LW', 'RW', 'ST'];
+  const allSquadPlayers = allTeams.flatMap(t => t.squad.map(p => ({ ...p, country: t.country })));
+  const result: { playerId: string; playerName: string; position: Position; country: string }[] = [];
+  const usedIds = new Set<string>();
+
+  for (const pos of positions) {
+    const candidates = allSquadPlayers
+      .filter(p => p.position === pos && !usedIds.has(p.id))
+      .sort((a, b) => getPlayerOverall(b) - getPlayerOverall(a));
+    if (candidates.length > 0) {
+      const pick = candidates[0];
+      usedIds.add(pick.id);
+      result.push({ playerId: pick.id, playerName: `${pick.firstName} ${pick.lastName}`, position: pos, country: pick.country });
+    }
+  }
+  return result;
 }

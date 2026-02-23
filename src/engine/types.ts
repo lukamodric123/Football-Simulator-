@@ -99,7 +99,22 @@ export interface Team {
   titles: number;
   managerName: string;
   managerStyle: ManagerStyle;
+  // V7 additions
+  stadium: Stadium;
+  ffpWarning: boolean;
+  trainingIntensity: TrainingIntensity;
+  wageTotal: number;
 }
+
+export interface Stadium {
+  name: string;
+  capacity: number;
+  level: number; // 1-5
+  atmosphere: number; // 0-100
+  upgradeCost: number;
+}
+
+export type TrainingIntensity = 'low' | 'medium' | 'high' | 'extreme';
 
 export type Tactic = 'possession' | 'counter' | 'pressing' | 'defensive' | 'balanced';
 export type FanMood = 'ecstatic' | 'happy' | 'neutral' | 'frustrated' | 'angry';
@@ -225,7 +240,7 @@ export interface GameState {
   seasonAwards: { season: number; awards: Award[] }[];
   totalSeasonsPlayed: number;
   worldCup: WorldCup | null;
-  worldCupHistory: { season: number; winner: string; goldenBoot?: string; goldenBall?: string }[];
+  worldCupHistory: { season: number; winner: string; goldenBoot?: string; goldenBall?: string; goldenGlove?: string; runnerUp?: string; thirdPlace?: string }[];
   promotionLog: { season: number; promoted: { teamId: string; fromLeague: string; toLeague: string }[]; relegated: { teamId: string; fromLeague: string; toLeague: string }[] }[];
   // V4 additions
   ucl: UCLTournament | null;
@@ -268,7 +283,11 @@ export interface WorldCup {
   knockoutFixtures: Fixture[];
   goldenBoot?: { playerId: string; playerName: string; goals: number };
   goldenBall?: { playerId: string; playerName: string };
+  goldenGlove?: { playerId: string; playerName: string; cleanSheets: number };
+  teamOfTournament?: { playerId: string; playerName: string; position: Position; country: string }[];
   winner?: string;
+  runnerUp?: string;
+  thirdPlace?: string;
   awards: Award[];
 }
 
