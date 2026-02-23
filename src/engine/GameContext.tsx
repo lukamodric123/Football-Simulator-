@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { GameState, League, Standing, Team, Player, Award, GOATEntry, AllTimeRecord, GameMode, SeasonRecord, Transfer, UCLTournament, CareerPlayer, StoryArc } from './types';
+import { GameState, League, Standing, Team, Player, Award, GOATEntry, AllTimeRecord, GameMode, SeasonRecord, Transfer, UCLTournament, CareerPlayer, StoryArc, TrainingIntensity } from './types';
 import { LEAGUES } from './data';
 import { generateTeam, getPlayerOverall, agePlayer, shouldRetire, generateYouthPlayer, calculateGOATScore, generatePlayer, uid } from './generator';
 import { generateFixtures, simulateMatch } from './simulation';
@@ -21,6 +21,8 @@ interface GameContextType {
   getLeagueStandings: (leagueId: string) => (Standing & { team: Team })[];
   getTopScorers: (leagueId: string) => { player: Player; team: Team; goals: number }[];
   makeManagerTransfer: (playerId: string, fee: number, wage: number, contractYears: number) => { success: boolean; message: string };
+  upgradeStadium: (teamId: string) => { success: boolean; message: string };
+  setTrainingIntensity: (teamId: string, intensity: TrainingIntensity) => void;
 }
 
 const GameContext = createContext<GameContextType | null>(null);
@@ -514,21 +516,68 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // --- Random events ---
+      // --- Random events & Training/FFP ---
       for (const teamId of Object.keys(updatedTeams)) {
         const team = updatedTeams[teamId];
+        
+        // Budget changes
         if (Math.random() < 0.05) {
           const change = Math.random() > 0.5 ? Math.round(team.budget * 0.5) : -Math.round(team.budget * 0.3);
           updatedTeams[teamId] = { ...team, budget: Math.max(10, team.budget + change) };
         }
+
+        // Training intensity effects
+        const ti = team.trainingIntensity || 'medium';
+        for (const p of team.squad) {
+          if (!updatedPlayers[p.id] || updatedPlayers[p.id].retired) continue;
+          const player = updatedPlayers[p.id];
+          let injuryBonus = 0;
+          let staminaBonus = 0;
+          if (ti === 'extreme') { injuryBonus = 0.06; staminaBonus = 4; }
+          else if (ti === 'high') { injuryBonus = 0.03; staminaBonus = 2; }
+          else if (ti === 'low') { injuryBonus = -0.02; staminaBonus = -2; }
+          // Apply training fatigue/development
+          const newStamina = Math.min(99, Math.max(30, player.attributes.stamina + staminaBonus));
+          const extraInjury = Math.random() < (player.hiddenTraits.injuryRisk / 100 + injuryBonus);
+          updatedPlayers[p.id] = {
+            ...player,
+            attributes: { ...player.attributes, stamina: newStamina },
+            injured: extraInjury ? true : player.injured,
+            injuryWeeks: extraInjury ? Math.max(player.injuryWeeks, Math.floor(Math.random() * 6) + 1) : player.injuryWeeks,
+          };
+        }
+
+        // Stadium revenue
+        const stadiumRevenue = Math.round((team.stadium?.capacity || 30000) / 10000 * 3);
+        
+        // FFP: wage total check
+        const wageTotal = team.squad.reduce((s, p) => s + (updatedPlayers[p.id]?.wage || 0), 0);
+        const ffpWarning = wageTotal > team.budget * 8;
+        
+        // Atmosphere based on fan mood
+        const atmosphereBonus = team.fanMood === 'ecstatic' ? 5 : team.fanMood === 'happy' ? 2 : team.fanMood === 'angry' ? -5 : 0;
+
+        // Fan mood
         const league = newLeagues.find(l => l.teams.includes(teamId));
+        let fanMood = team.fanMood;
         if (league) {
           const sorted = [...league.standings].sort((a, b) => b.points - a.points);
           const pos = sorted.findIndex(s => s.teamId === teamId);
           const total = sorted.length;
-          const fanMood = pos < total * 0.2 ? 'happy' : pos < total * 0.4 ? 'neutral' : pos < total * 0.7 ? 'frustrated' : 'angry';
-          updatedTeams[teamId] = { ...updatedTeams[teamId], fanMood: fanMood as any };
+          fanMood = pos < total * 0.2 ? 'happy' : pos < total * 0.4 ? 'neutral' : pos < total * 0.7 ? 'frustrated' : 'angry';
         }
+
+        updatedTeams[teamId] = {
+          ...updatedTeams[teamId],
+          budget: Math.max(5, (updatedTeams[teamId].budget || team.budget) + stadiumRevenue - (ffpWarning ? 10 : 0)),
+          ffpWarning,
+          wageTotal,
+          fanMood: fanMood as any,
+          stadium: {
+            ...team.stadium,
+            atmosphere: Math.min(100, Math.max(20, (team.stadium?.atmosphere || 60) + atmosphereBonus)),
+          },
+        };
       }
 
       // --- UCL (Champions League) ---
@@ -610,6 +659,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
             winner: wc.winner,
             goldenBoot: wc.goldenBoot?.playerName,
             goldenBall: wc.goldenBall?.playerName,
+            goldenGlove: wc.goldenGlove?.playerName,
+            runnerUp: wc.runnerUp,
+            thirdPlace: wc.thirdPlace,
           });
           wcNews.push(...generateWorldCupNews(wc, prev.season));
 
@@ -923,8 +975,49 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return scorers.sort((a, b) => b.goals - a.goals).slice(0, 20);
   }, [state.leagues, state.teams, state.players]);
 
+  const upgradeStadium = useCallback((teamId: string): { success: boolean; message: string } => {
+    const team = state.teams[teamId];
+    if (!team) return { success: false, message: 'Team not found.' };
+    if (team.stadium.level >= 5) return { success: false, message: 'Stadium is already max level.' };
+    if (team.budget < team.stadium.upgradeCost) return { success: false, message: 'Insufficient budget.' };
+    setState(prev => {
+      const t = prev.teams[teamId];
+      if (!t) return prev;
+      const newLevel = t.stadium.level + 1;
+      return {
+        ...prev,
+        teams: {
+          ...prev.teams,
+          [teamId]: {
+            ...t,
+            budget: t.budget - t.stadium.upgradeCost,
+            stadium: {
+              ...t.stadium,
+              level: newLevel,
+              capacity: t.stadium.capacity + 15000,
+              atmosphere: Math.min(100, t.stadium.atmosphere + 10),
+              upgradeCost: (6 - newLevel) * 50,
+            },
+          },
+        },
+        news: [{ id: `stadium_${Date.now()}`, headline: `🏟️ ${t.name} upgrade their stadium to Level ${newLevel}!`, body: '', category: 'drama' as const, week: prev.week, season: prev.season, importance: 3 }, ...prev.news].slice(0, 300),
+      };
+    });
+    return { success: true, message: 'Stadium upgraded!' };
+  }, [state.teams]);
+
+  const setTrainingIntensity = useCallback((teamId: string, intensity: TrainingIntensity) => {
+    setState(prev => ({
+      ...prev,
+      teams: {
+        ...prev.teams,
+        [teamId]: { ...prev.teams[teamId], trainingIntensity: intensity },
+      },
+    }));
+  }, []);
+
   return (
-    <GameContext.Provider value={{ state, initializeGame, initializeCareerMode, simulateWeek, simulateMultipleWeeks, advanceToNextSeason, getTeam, getPlayer, getLeagueStandings, getTopScorers, makeManagerTransfer }}>
+    <GameContext.Provider value={{ state, initializeGame, initializeCareerMode, simulateWeek, simulateMultipleWeeks, advanceToNextSeason, getTeam, getPlayer, getLeagueStandings, getTopScorers, makeManagerTransfer, upgradeStadium, setTrainingIntensity }}>
       {children}
     </GameContext.Provider>
   );
