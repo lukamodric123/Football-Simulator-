@@ -196,7 +196,7 @@ export interface AllTimeRecord {
   season: number;
 }
 
-export type GameMode = 'universe' | 'manager' | 'survival' | 'career';
+export type GameMode = 'universe' | 'manager' | 'survival' | 'career' | 'ultimate_team';
 
 // Player Career Mode types
 export interface CareerPlayer {
@@ -242,17 +242,36 @@ export interface GameState {
   worldCup: WorldCup | null;
   worldCupHistory: { season: number; winner: string; goldenBoot?: string; goldenBall?: string; goldenGlove?: string; runnerUp?: string; thirdPlace?: string }[];
   promotionLog: { season: number; promoted: { teamId: string; fromLeague: string; toLeague: string }[]; relegated: { teamId: string; fromLeague: string; toLeague: string }[] }[];
-  // V4 additions
   ucl: UCLTournament | null;
   uclHistory: { season: number; winner: string; topScorer?: string; bestPlayer?: string }[];
   transfers: Transfer[];
   transferHistory: Transfer[];
-  survivalTeams: string[]; // teams still alive in survival mode
-  eliminatedTeams: string[]; // teams eliminated in survival mode
-  // V6 additions
+  survivalTeams: string[];
+  eliminatedTeams: string[];
   careerPlayer: CareerPlayer | null;
   storyArcs: StoryArc[];
   ballonDorHistory: { season: number; playerId: string; playerName: string; teamName: string }[];
+  // V8: Manager expanded
+  managerStatus: ManagerStatus | null;
+  // V9: Greatest team tracker
+  greatestTeamHistory: { season: number; teamId: string; teamName: string; rating: number; titles: number }[];
+  clubDynastyTracker: Record<string, { titles: number; uclTitles: number; consecutiveTitles: number }>;
+  managerLegacy: { teamId: string; teamName: string; managerName: string; seasonsInCharge: number; titles: number; sacked: boolean }[];
+}
+
+export interface ManagerStatus {
+  approval: number;
+  boardConfidence: number;
+  seasonsInCharge: number;
+  sacked: boolean;
+  boardExpectations: BoardExpectation[];
+  warningIssued: boolean;
+}
+
+export interface BoardExpectation {
+  type: 'title' | 'top4' | 'avoid_relegation' | 'develop_youth' | 'profit';
+  description: string;
+  met: boolean;
 }
 
 export type GamePhase = 'pre_season' | 'in_season' | 'transfer_window' | 'end_season';
