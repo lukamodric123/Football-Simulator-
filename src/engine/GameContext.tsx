@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { GameState, League, Standing, Team, Player, Award, GOATEntry, AllTimeRecord, GameMode, SeasonRecord, Transfer, UCLTournament, CareerPlayer, StoryArc, TrainingIntensity } from './types';
+import { GameState, League, Standing, Team, Player, Award, GOATEntry, AllTimeRecord, GameMode, SeasonRecord, Transfer, UCLTournament, CareerPlayer, StoryArc, TrainingIntensity, ManagerStatus } from './types';
 import { LEAGUES } from './data';
 import { generateTeam, getPlayerOverall, agePlayer, shouldRetire, generateYouthPlayer, calculateGOATScore, generatePlayer, uid } from './generator';
 import { generateFixtures, simulateMatch } from './simulation';
@@ -8,6 +8,7 @@ import { generateWorldCup, simulateWorldCupGroupStage, simulateWorldCupKnockouts
 import { generateUCL, simulateUCLGroupStage, simulateUCLKnockouts } from './ucl';
 import { simulateTransfers } from './transfers';
 import { generateSuperstars, getSuperstarsForTeam } from './superstars';
+import { generateBoardExpectations, evaluateManagerPerformance } from './managerExpanded';
 
 interface GameContextType {
   state: GameState;
@@ -63,6 +64,10 @@ const initialState: GameState = {
   careerPlayer: null,
   storyArcs: [],
   ballonDorHistory: [],
+  managerStatus: null,
+  greatestTeamHistory: [],
+  clubDynastyTracker: {},
+  managerLegacy: [],
 };
 
 function buildLeague(leagueDef: typeof LEAGUES[0], teams: Record<string, Team>, players: Record<string, Player>) {
@@ -121,6 +126,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // Generate manager status for manager mode
+    const managerStatus: ManagerStatus | null = (mode === 'manager' && managedTeamId && teams[managedTeamId]) ? {
+      approval: 60,
+      boardConfidence: 70,
+      seasonsInCharge: 0,
+      sacked: false,
+      boardExpectations: generateBoardExpectations(teams[managedTeamId], 1),
+      warningIssued: false,
+    } : null;
+
     setState({
       ...initialState,
       season: 1,
@@ -153,6 +168,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       careerPlayer: null,
       storyArcs: [],
       ballonDorHistory: [],
+      managerStatus,
+      greatestTeamHistory: [],
+      clubDynastyTracker: {},
+      managerLegacy: [],
     });
   }, []);
 
@@ -829,6 +848,68 @@ export function GameProvider({ children }: { children: ReactNode }) {
       // Keep only last 30 story arcs
       const trimmedArcs = newStoryArcs.slice(-30);
 
+      // --- Manager evaluation ---
+      let managerStatus = prev.managerStatus ? { ...prev.managerStatus } : null;
+      const managerNews: any[] = [];
+      if (managerStatus && prev.managedTeamId && updatedTeams[prev.managedTeamId]) {
+        const mTeam = updatedTeams[prev.managedTeamId];
+        const mLeague = newLeagues.find(l => l.teams.includes(prev.managedTeamId!));
+        if (mLeague) {
+          const sorted = [...mLeague.standings].sort((a, b) => b.points - a.points || (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst));
+          const pos = sorted.findIndex(s => s.teamId === prev.managedTeamId) + 1;
+          const evalResult = evaluateManagerPerformance(mTeam, pos, sorted.length, managerStatus, prev.season);
+          managerStatus = evalResult.status;
+          managerNews.push(...evalResult.news);
+          // Generate new expectations for next season
+          managerStatus.boardExpectations = generateBoardExpectations(mTeam, newSeason);
+          managerStatus.warningIssued = false;
+        }
+      }
+
+      // --- Greatest Team & Dynasty tracker ---
+      const greatestTeamHistory = [...prev.greatestTeamHistory];
+      const clubDynastyTracker = { ...prev.clubDynastyTracker };
+      
+      // Track greatest team each season
+      const allTeamsList = Object.values(updatedTeams);
+      const bestTeam = allTeamsList.reduce((best, t) => {
+        const rating = t.reputation + t.titles * 5;
+        const bestRating = best.reputation + best.titles * 5;
+        return rating > bestRating ? t : best;
+      }, allTeamsList[0]);
+      if (bestTeam) {
+        greatestTeamHistory.push({ season: prev.season, teamId: bestTeam.id, teamName: bestTeam.name, rating: bestTeam.reputation, titles: bestTeam.titles });
+      }
+
+      // Update dynasty tracker
+      for (const league of newLeagues) {
+        const sorted = [...league.standings].sort((a, b) => b.points - a.points);
+        const champId = sorted[0]?.teamId;
+        if (champId) {
+          if (!clubDynastyTracker[champId]) {
+            clubDynastyTracker[champId] = { titles: 0, uclTitles: 0, consecutiveTitles: 0 };
+          }
+          clubDynastyTracker[champId].titles += 1;
+          // Check consecutive
+          const prevChamp = league.champions[league.champions.length - 1]?.teamId;
+          if (prevChamp === champId) {
+            clubDynastyTracker[champId].consecutiveTitles += 1;
+          } else {
+            clubDynastyTracker[champId].consecutiveTitles = 1;
+          }
+        }
+      }
+      // UCL dynasty
+      if (ucl.winnerTeamId) {
+        if (!clubDynastyTracker[ucl.winnerTeamId]) {
+          clubDynastyTracker[ucl.winnerTeamId] = { titles: 0, uclTitles: 0, consecutiveTitles: 0 };
+        }
+        clubDynastyTracker[ucl.winnerTeamId].uclTitles += 1;
+      }
+
+      // Manager legacy
+      const managerLegacy = [...prev.managerLegacy];
+
       return {
         ...prev,
         season: newSeason,
@@ -837,7 +918,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         leagues: readyLeagues,
         teams: updatedTeams,
         players: updatedPlayers,
-        news: [newSeasonNews, ...ballonDorNews, ...uclNews, ...transferNews, ...wcNews, ...promotionNews, ...goatNews, ...awardNews, ...retirementNews, ...prev.news].slice(0, 300),
+        news: [newSeasonNews, ...managerNews, ...ballonDorNews, ...uclNews, ...transferNews, ...wcNews, ...promotionNews, ...goatNews, ...awardNews, ...retirementNews, ...prev.news].slice(0, 300),
         awards: [...seasonAwards, ...(ucl.awards || []), ...(worldCup?.awards || []), ...prev.awards],
         goatRankings,
         allTimeRecords,
@@ -856,6 +937,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
         careerPlayer: updatedCareerPlayer,
         storyArcs: trimmedArcs,
         ballonDorHistory,
+        managerStatus,
+        greatestTeamHistory,
+        clubDynastyTracker,
+        managerLegacy,
       };
     });
   }, []);

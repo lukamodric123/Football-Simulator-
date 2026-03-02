@@ -16,6 +16,8 @@ import TransferHub from '@/components/game/TransferHub';
 import CareerPanel from '@/components/game/CareerPanel';
 import StadiumPanel from '@/components/game/StadiumPanel';
 import BallonDorCeremony from '@/components/game/BallonDorCeremony';
+import UltimateTeamView from '@/components/game/UltimateTeamView';
+import ManagerDashboard from '@/components/game/ManagerDashboard';
 import { LEAGUES } from '@/engine/data';
 
 type View = 'dashboard' | 'team' | 'player';
@@ -26,7 +28,7 @@ const Dashboard: React.FC = () => {
   const [view, setView] = useState<View>('dashboard');
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
-  const [tab, setTab] = useState<'standings' | 'results' | 'scorers' | 'goat' | 'awards' | 'worldcup' | 'ucl' | 'transfers' | 'finance' | 'halloffame' | 'signing' | 'stadium' | 'ballondor'>('standings');
+  const [tab, setTab] = useState<'standings' | 'results' | 'scorers' | 'goat' | 'awards' | 'worldcup' | 'ucl' | 'transfers' | 'finance' | 'halloffame' | 'signing' | 'stadium' | 'ballondor' | 'ultimateteam' | 'managerdash'>('standings');
   const [simming, setSimming] = useState(false);
 
   const league = state.leagues.find(l => l.id === selectedLeague);
@@ -197,7 +199,8 @@ const Dashboard: React.FC = () => {
               'standings', 'results', 'scorers',
               ...((state.gameMode === 'manager' || state.gameMode === 'career') ? ['signing' as const] : []),
               ...((state.gameMode === 'manager' || state.gameMode === 'career') ? ['stadium' as const] : []),
-              'ucl', 'transfers', 'goat', 'awards', 'ballondor', 'worldcup', 'finance', 'halloffame',
+              ...(state.gameMode === 'manager' ? ['managerdash' as const] : []),
+              'ucl', 'transfers', 'goat', 'awards', 'ballondor', 'worldcup', 'finance', 'halloffame', 'ultimateteam',
             ] as const).map(t => (
               <button key={t} onClick={() => setTab(t)}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium capitalize transition-colors whitespace-nowrap ${
@@ -215,6 +218,8 @@ const Dashboard: React.FC = () => {
                   : t === 'signing' ? '✍️ Sign Players'
                   : t === 'stadium' ? '🏟️ Stadium'
                   : t === 'ballondor' ? '🎭 Ballon d\'Or'
+                  : t === 'ultimateteam' ? '🏆 UT'
+                  : t === 'managerdash' ? '👔 Manager'
                   : '📊 Table'}
               </button>
             ))}
@@ -313,6 +318,18 @@ const Dashboard: React.FC = () => {
               <BallonDorCeremony
                 ballonDorHistory={state.ballonDorHistory}
                 onPlayerClick={handlePlayerClick}
+              />
+            )}
+
+            {tab === 'ultimateteam' && (
+              <UltimateTeamView />
+            )}
+
+            {tab === 'managerdash' && state.managedTeamId && state.teams[state.managedTeamId] && state.managerStatus && (
+              <ManagerDashboard
+                team={state.teams[state.managedTeamId]}
+                managerStatus={state.managerStatus}
+                players={state.players}
               />
             )}
           </div>

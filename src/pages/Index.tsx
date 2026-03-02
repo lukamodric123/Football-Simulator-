@@ -168,51 +168,63 @@ const Index: React.FC = () => {
         <h1 className="font-display text-4xl mb-2">CHOOSE YOUR MODE</h1>
         <p className="text-muted-foreground mb-8">How do you want to experience the football universe?</p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 max-w-6xl w-full">
           <button onClick={() => { setSelectedMode('manager'); setStep('team_select'); }}
-            className="bg-card rounded-xl p-6 text-left card-hover transition-all hover:scale-[1.02] border border-border hover:border-primary">
-            <span className="text-4xl">🎯</span>
-            <h3 className="font-display text-2xl mt-3">MANAGER</h3>
-            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">Take control of a club. Set tactics, manage transfers, and lead your team to glory.</p>
-            <div className="mt-4 flex flex-wrap gap-1">
-              {['Tactics', 'Transfers', 'Budget'].map(f => (
-                <span key={f} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">{f}</span>
+            className="bg-card rounded-xl p-5 text-left card-hover transition-all hover:scale-[1.02] border border-border hover:border-primary">
+            <span className="text-3xl">🎯</span>
+            <h3 className="font-display text-xl mt-2">MANAGER</h3>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Control a club. Tactics, transfers, board expectations, sacking.</p>
+            <div className="mt-3 flex flex-wrap gap-1">
+              {['Agents', 'Sacking', 'Fan Meter'].map(f => (
+                <span key={f} className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">{f}</span>
               ))}
             </div>
           </button>
 
           <button onClick={() => { setStep('career_create'); }}
-            className="bg-card rounded-xl p-6 text-left card-hover transition-all hover:scale-[1.02] border border-border hover:border-primary">
-            <span className="text-4xl">🌟</span>
-            <h3 className="font-display text-2xl mt-3">CAREER</h3>
-            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">Create your own player. Rise from youth to legend. Win the Ballon d'Or.</p>
-            <div className="mt-4 flex flex-wrap gap-1">
-              {['Create Player', 'Story Arcs', 'Legacy'].map(f => (
-                <span key={f} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">{f}</span>
+            className="bg-card rounded-xl p-5 text-left card-hover transition-all hover:scale-[1.02] border border-border hover:border-primary">
+            <span className="text-3xl">🌟</span>
+            <h3 className="font-display text-xl mt-2">CAREER</h3>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Create a player. Rise to legend. Win Ballon d'Or.</p>
+            <div className="mt-3 flex flex-wrap gap-1">
+              {['Create', 'Story', 'Legacy'].map(f => (
+                <span key={f} className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">{f}</span>
+              ))}
+            </div>
+          </button>
+
+          <button onClick={() => initializeGame('ultimate_team')}
+            className="bg-card rounded-xl p-5 text-left card-hover transition-all hover:scale-[1.02] border border-border hover:border-accent">
+            <span className="text-3xl">🏆</span>
+            <h3 className="font-display text-xl mt-2">ULTIMATE TEAM</h3>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Build dream squad. Cards, chemistry, packs, leaderboard.</p>
+            <div className="mt-3 flex flex-wrap gap-1">
+              {['Cards', 'Packs', 'Chemistry'].map(f => (
+                <span key={f} className="text-xs bg-accent/10 text-accent px-1.5 py-0.5 rounded">{f}</span>
               ))}
             </div>
           </button>
 
           <button onClick={() => initializeGame('universe')}
-            className="bg-card rounded-xl p-6 text-left card-hover transition-all hover:scale-[1.02] border border-border hover:border-accent">
-            <span className="text-4xl">🌍</span>
-            <h3 className="font-display text-2xl mt-3">UNIVERSE</h3>
-            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">Watch the football world evolve. Observe dynasties, legends, and stories unfold.</p>
-            <div className="mt-4 flex flex-wrap gap-1">
-              {['Auto Sim', 'History', 'Legends'].map(f => (
-                <span key={f} className="text-xs bg-accent/10 text-accent px-2 py-0.5 rounded">{f}</span>
+            className="bg-card rounded-xl p-5 text-left card-hover transition-all hover:scale-[1.02] border border-border hover:border-accent">
+            <span className="text-3xl">🌍</span>
+            <h3 className="font-display text-xl mt-2">UNIVERSE</h3>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Watch dynasties unfold. GOAT rankings. History tracker.</p>
+            <div className="mt-3 flex flex-wrap gap-1">
+              {['Dynasty', 'GOAT', 'Records'].map(f => (
+                <span key={f} className="text-xs bg-accent/10 text-accent px-1.5 py-0.5 rounded">{f}</span>
               ))}
             </div>
           </button>
 
           <button onClick={() => initializeGame('survival')}
-            className="bg-card rounded-xl p-6 text-left card-hover transition-all hover:scale-[1.02] border border-border hover:border-destructive">
-            <span className="text-4xl">⚔️</span>
-            <h3 className="font-display text-2xl mt-3">SURVIVAL</h3>
-            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">Teams are eliminated each season. Last team standing wins the ultimate title.</p>
-            <div className="mt-4 flex flex-wrap gap-1">
-              {['Elimination', 'Last Standing', 'Drama'].map(f => (
-                <span key={f} className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded">{f}</span>
+            className="bg-card rounded-xl p-5 text-left card-hover transition-all hover:scale-[1.02] border border-border hover:border-destructive">
+            <span className="text-3xl">⚔️</span>
+            <h3 className="font-display text-xl mt-2">SURVIVAL</h3>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Teams eliminated each season. Last standing wins.</p>
+            <div className="mt-3 flex flex-wrap gap-1">
+              {['Elimination', 'Last Man', 'Drama'].map(f => (
+                <span key={f} className="text-xs bg-destructive/10 text-destructive px-1.5 py-0.5 rounded">{f}</span>
               ))}
             </div>
           </button>
@@ -234,12 +246,12 @@ const Index: React.FC = () => {
       <div className="text-center z-10 px-4">
         <h1 className="font-display text-6xl sm:text-8xl mb-2 tracking-wider">ULTIMATE SOCCER</h1>
         <h2 className="font-display text-4xl sm:text-6xl text-primary mb-4 tracking-wider">SIMULATOR</h2>
-        <p className="text-xs text-accent font-display tracking-widest mb-2">CAREER STORY ENGINE · V6</p>
+        <p className="text-xs text-accent font-display tracking-widest mb-2">ULTIMATE EXPANSION · V9</p>
         <div className="flex items-center justify-center gap-2 mb-8">
-          <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded font-medium">⭐ MESSI · RONALDO · MBAPPÉ · HAALAND</span>
+          <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded font-medium">⭐ MESSI · RONALDO · MBAPPÉ · HAALAND · 30+ ICONS</span>
         </div>
         <p className="text-muted-foreground max-w-lg mx-auto mb-12 leading-relaxed">
-          A living football universe with career mode, story arcs, dynamic Ballon d'Or ceremonies, and the ultimate GOAT debate.
+          A living football universe with 5 game modes, Ultimate Team cards, expanded manager with agents & sacking, dynasty tracker, and the ultimate GOAT debate.
         </p>
 
         <button onClick={() => setStep('mode')}
@@ -250,9 +262,9 @@ const Index: React.FC = () => {
         <div className="mt-16 grid grid-cols-2 sm:grid-cols-5 gap-6 max-w-3xl mx-auto text-center">
           {[
             { icon: '⭐', label: 'Superstars', sub: '30 Icons Seeded' },
-            { icon: '🎬', label: 'Story Engine', sub: 'Dynamic Arcs' },
-            { icon: '🌟', label: 'Career Mode', sub: 'Create Player' },
-            { icon: '🏆', label: 'Ballon d\'Or', sub: 'Annual Ceremony' },
+            { icon: '🏆', label: 'Ultimate Team', sub: 'Cards & Packs' },
+            { icon: '👔', label: 'Manager+', sub: 'Agents & Sacking' },
+            { icon: '🎬', label: 'Dynasty', sub: 'Club Tracker' },
             { icon: '👑', label: 'GOAT Debate', sub: 'Living History' },
           ].map(f => (
             <div key={f.label}>

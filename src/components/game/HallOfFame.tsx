@@ -45,6 +45,19 @@ const HallOfFame: React.FC = () => {
   }
   const topWCNations = Object.entries(wcWinners).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
+  // Dynasty tracker
+  const dynastyEntries = Object.entries(state.clubDynastyTracker || {})
+    .map(([teamId, data]) => ({ teamId, teamName: state.teams[teamId]?.name || teamId, ...data }))
+    .filter(d => d.titles > 0)
+    .sort((a, b) => (b.titles + b.uclTitles * 2) - (a.titles + a.uclTitles * 2))
+    .slice(0, 8);
+
+  // Greatest team history
+  const greatestTeams = (state.greatestTeamHistory || []).slice(-5).reverse();
+
+  // Manager legacy
+  const managerLegacy = state.managerLegacy || [];
+
   return (
     <div className="space-y-6">
       {/* All-Time Records */}
@@ -67,6 +80,42 @@ const HallOfFame: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+        {/* Dynasty Tracker */}
+        {dynastyEntries.length > 0 && (
+          <div>
+            <h3 className="font-display text-base text-muted-foreground mb-2">👑 CLUB DYNASTY TRACKER</h3>
+            <div className="space-y-1">
+              {dynastyEntries.map((d, i) => (
+                <div key={d.teamId} className="flex items-center gap-2 py-1.5 px-2 bg-card/30 rounded text-sm">
+                  <span className={`w-5 text-center text-xs font-bold ${i === 0 ? 'text-accent' : 'text-muted-foreground'}`}>{i + 1}</span>
+                  <span className="flex-1 font-medium truncate">{d.teamName}</span>
+                  <span className="font-display text-accent">{d.titles}🏆</span>
+                  <span className="font-display text-blue-300 text-xs">{d.uclTitles}⭐</span>
+                  {d.consecutiveTitles >= 2 && <span className="text-xs text-primary">🔥{d.consecutiveTitles}x</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Greatest Team History */}
+        {greatestTeams.length > 0 && (
+          <div>
+            <h3 className="font-display text-base text-muted-foreground mb-2">🏅 GREATEST TEAM BY SEASON</h3>
+            <div className="space-y-1">
+              {greatestTeams.map((gt, i) => (
+                <div key={`${gt.season}-${gt.teamId}`} className="flex items-center gap-2 py-1.5 px-2 bg-card/30 rounded text-sm">
+                  <span className="text-xs text-muted-foreground w-10">S{gt.season}</span>
+                  <span className="flex-1 font-medium truncate">{gt.teamName}</span>
+                  <span className="text-xs text-muted-foreground">Rep {gt.rating}</span>
+                  <span className="font-display text-accent">{gt.titles}🏆</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Greatest clubs */}
         <div>
           <h3 className="font-display text-base text-muted-foreground mb-2">🏆 GREATEST CLUBS (LEAGUE TITLES)</h3>
