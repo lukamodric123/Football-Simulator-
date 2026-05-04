@@ -39,6 +39,10 @@ export interface Player {
   retiredSeason?: number;
   personalGoal: PersonalGoal;
   seasonHistory: SeasonRecord[];
+  // Loan system
+  onLoanFromTeamId?: string;
+  loanWeeksRemaining?: number;
+  loanBuyOption?: number;
 }
 
 export type LegendType = 'playmaker' | 'scorer' | 'defender' | 'midfielder' | 'goalkeeper';
@@ -104,6 +108,25 @@ export interface Team {
   ffpWarning: boolean;
   trainingIntensity: TrainingIntensity;
   wageTotal: number;
+  // V10: Rivalries & sponsorship
+  rivals: string[]; // team IDs
+  sponsors: Sponsor[];
+  lastSeasonRevenue: SeasonRevenue;
+}
+
+export interface Sponsor {
+  name: string;
+  type: 'kit' | 'stadium' | 'sleeve' | 'training';
+  annualValue: number; // €M
+}
+
+export interface SeasonRevenue {
+  ticketSales: number;
+  merchandise: number;
+  sponsorships: number;
+  prizeMoney: number;
+  transfers: number;
+  total: number;
 }
 
 export interface Stadium {
@@ -257,6 +280,35 @@ export interface GameState {
   greatestTeamHistory: { season: number; teamId: string; teamName: string; rating: number; titles: number }[];
   clubDynastyTracker: Record<string, { titles: number; uclTitles: number; consecutiveTitles: number }>;
   managerLegacy: { teamId: string; teamName: string; managerName: string; seasonsInCharge: number; titles: number; sacked: boolean }[];
+  // V10
+  domesticCups: DomesticCup[];
+  domesticCupHistory: { season: number; leagueId: string; cupName: string; winnerTeamId: string; winnerName: string; runnerUpName: string }[];
+  loanDeals: LoanDeal[];
+}
+
+export interface DomesticCup {
+  id: string;
+  name: string;
+  leagueId: string; // associated tier-1 league country
+  season: number;
+  round: 'r32' | 'r16' | 'qf' | 'sf' | 'final' | 'complete';
+  fixtures: Fixture[];
+  remainingTeamIds: string[];
+  winnerTeamId?: string;
+  runnerUpTeamId?: string;
+}
+
+export interface LoanDeal {
+  id: string;
+  playerId: string;
+  playerName: string;
+  fromTeamId: string;
+  fromTeamName: string;
+  toTeamId: string;
+  toTeamName: string;
+  weeksRemaining: number;
+  buyOption: number; // €M, 0 = none
+  season: number;
 }
 
 export interface ManagerStatus {
