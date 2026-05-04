@@ -339,8 +339,12 @@ const Dashboard: React.FC = () => {
                 players={state.players}
               />
             )}
-          </div>
-        </div>
+
+            {tab === 'cup' && <DomesticCupView onTeamClick={handleTeamClick} />}
+
+            {tab === 'revenue' && <RevenuePanel />}
+
+            {tab === 'loans' && <LoanPanel onPlayerClick={handlePlayerClick} />}
 
         {/* Right Sidebar */}
         <div className="space-y-4">
