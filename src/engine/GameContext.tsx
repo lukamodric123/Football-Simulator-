@@ -944,6 +944,60 @@ export function GameProvider({ children }: { children: ReactNode }) {
       // Manager legacy
       const managerLegacy = [...prev.managerLegacy];
 
+      // --- DOMESTIC CUPS: log winners, give trophy + revenue, generate next season's cups ---
+      const domesticCupHistory = [...prev.domesticCupHistory];
+      const cupRevenueByTeam: Record<string, number> = {};
+      for (const cup of prev.domesticCups) {
+        if (cup.winnerTeamId && updatedTeams[cup.winnerTeamId]) {
+          const winner = updatedTeams[cup.winnerTeamId];
+          const runnerUp = cup.runnerUpTeamId && updatedTeams[cup.runnerUpTeamId];
+          updatedTeams[cup.winnerTeamId] = { ...winner, titles: winner.titles + 1, reputation: Math.min(99, winner.reputation + 1) };
+          for (const p of winner.squad) {
+            if (updatedPlayers[p.id]) {
+              updatedPlayers[p.id] = { ...updatedPlayers[p.id], trophies: updatedPlayers[p.id].trophies + 1 };
+            }
+          }
+          cupRevenueByTeam[cup.winnerTeamId] = (cupRevenueByTeam[cup.winnerTeamId] || 0) + 25;
+          domesticCupHistory.push({
+            season: prev.season,
+            leagueId: cup.leagueId,
+            cupName: cup.name,
+            winnerTeamId: cup.winnerTeamId,
+            winnerName: winner.name,
+            runnerUpName: runnerUp ? runnerUp.name : '—',
+          });
+        }
+      }
+      const newCups = generateDomesticCups(newSeason, readyLeagues, updatedTeams);
+
+      // --- LOAN RETURNS ---
+      const loanResult = processLoanReturns(updatedTeams, updatedPlayers, prev.loanDeals);
+      updatedTeams = loanResult.teams;
+      updatedPlayers = loanResult.players;
+      const remainingLoans = loanResult.loans;
+
+      // --- SPONSORSHIP & REVENUE ---
+      for (const tId of Object.keys(updatedTeams)) {
+        const t = updatedTeams[tId];
+        const lg = newLeagues.find(l => l.teams.includes(tId));
+        let pos = 10, size = 20;
+        if (lg) {
+          const sorted = [...lg.standings].sort((a, b) => b.points - a.points);
+          pos = sorted.findIndex(s => s.teamId === tId) + 1;
+          size = sorted.length;
+        }
+        const champId = lg ? [...lg.standings].sort((a, b) => b.points - a.points)[0]?.teamId : null;
+        const wonLeague = champId === tId;
+        const wonCup = prev.domesticCups.some(c => c.winnerTeamId === tId);
+        const wonUcl = ucl.winnerTeamId === tId;
+        const rev = calculateSeasonRevenue(t, pos, size, wonCup, wonLeague, wonUcl);
+        updatedTeams[tId] = {
+          ...t,
+          budget: Math.round(t.budget + rev.total - (t.wageTotal || 0) * 0.4),
+          lastSeasonRevenue: rev,
+        };
+      }
+
       return {
         ...prev,
         season: newSeason,
@@ -975,6 +1029,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
         greatestTeamHistory,
         clubDynastyTracker,
         managerLegacy,
+        domesticCups: newCups,
+        domesticCupHistory,
+        loanDeals: remainingLoans,
       };
     });
   }, []);
