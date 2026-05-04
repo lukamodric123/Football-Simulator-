@@ -201,7 +201,22 @@ export function generateTeam(
     ffpWarning: false,
     trainingIntensity: 'medium',
     wageTotal,
+    rivals: [],
+    sponsors: generateSponsors(reputation),
+    lastSeasonRevenue: { ticketSales: 0, merchandise: 0, sponsorships: 0, prizeMoney: 0, transfers: 0, total: 0 },
   };
+}
+
+const SPONSOR_BRANDS = ['Nike', 'Adidas', 'Puma', 'Emirates', 'Etihad', 'Qatar Airways', 'Chevrolet', 'Visit Rwanda', 'Standard Chartered', 'AIA', 'Three', 'Spotify', 'Stake', 'Crypto.com', 'Fly Better', 'Rakuten', 'Jeep', 'TeamViewer', 'Dafabet', 'Cazoo'];
+
+export function generateSponsors(reputation: number) {
+  const tierMult = reputation >= 88 ? 4 : reputation >= 78 ? 2 : reputation >= 65 ? 1 : 0.4;
+  const types: ('kit' | 'stadium' | 'sleeve' | 'training')[] = ['kit', 'stadium', 'sleeve', 'training'];
+  return types.map(t => ({
+    name: pick(SPONSOR_BRANDS),
+    type: t,
+    annualValue: Math.max(1, Math.round((t === 'kit' ? 25 : t === 'stadium' ? 18 : t === 'sleeve' ? 8 : 5) * tierMult * (0.7 + Math.random() * 0.6))),
+  }));
 }
 
 export function getPlayerOverall(player: Player): number {
