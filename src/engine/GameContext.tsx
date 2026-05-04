@@ -355,7 +355,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       week: newWeek,
       leagues: newLeagues,
       players: updatedPlayers,
-      news: [...weekNews, ...prev.news].slice(0, 200),
+      domesticCups: updatedCups,
+      news: [...cupNews, ...weekNews, ...prev.news].slice(0, 200),
       phase: allDone ? 'end_season' : 'in_season',
     };
   };
