@@ -1192,8 +1192,43 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const loanPlayerOut = useCallback((playerId: string, toTeamId: string, weeks: number, buyOption: number) => {
+    const managedId = state.managedTeamId;
+    if (!managedId) return { success: false, message: 'No managed team.' };
+    const result = createLoan(state.teams, state.players, playerId, managedId, toTeamId, weeks, buyOption, state.season);
+    if (!result.loan) return { success: false, message: result.message };
+    setState(prev => ({
+      ...prev,
+      teams: result.teams,
+      players: result.players,
+      loanDeals: [...prev.loanDeals, result.loan!],
+      news: [{ id: `loan-${Date.now()}`, headline: `📤 LOAN OUT: ${result.loan!.playerName} joins ${result.loan!.toTeamName} on loan${buyOption > 0 ? ` (€${buyOption}M buy option)` : ''}.`, body: '', category: 'transfer' as const, week: prev.week, season: prev.season, importance: 3 }, ...prev.news].slice(0, 300),
+    }));
+    return { success: true, message: result.message };
+  }, [state.managedTeamId, state.teams, state.players, state.season]);
+
+  const loanPlayerIn = useCallback((playerId: string, weeks: number, buyOption: number) => {
+    const managedId = state.managedTeamId;
+    if (!managedId) return { success: false, message: 'No managed team.' };
+    let fromTeamId = '';
+    for (const [tid, team] of Object.entries(state.teams)) {
+      if (team.squad.some(p => p.id === playerId)) { fromTeamId = tid; break; }
+    }
+    if (!fromTeamId) return { success: false, message: 'Player not found at any team.' };
+    const result = createLoan(state.teams, state.players, playerId, fromTeamId, managedId, weeks, buyOption, state.season);
+    if (!result.loan) return { success: false, message: result.message };
+    setState(prev => ({
+      ...prev,
+      teams: result.teams,
+      players: result.players,
+      loanDeals: [...prev.loanDeals, result.loan!],
+      news: [{ id: `loan-${Date.now()}`, headline: `📥 LOAN IN: ${result.loan!.playerName} joins ${result.loan!.toTeamName} on loan from ${result.loan!.fromTeamName}.`, body: '', category: 'transfer' as const, week: prev.week, season: prev.season, importance: 3 }, ...prev.news].slice(0, 300),
+    }));
+    return { success: true, message: result.message };
+  }, [state.managedTeamId, state.teams, state.players, state.season]);
+
   return (
-    <GameContext.Provider value={{ state, initializeGame, initializeCareerMode, simulateWeek, simulateMultipleWeeks, advanceToNextSeason, getTeam, getPlayer, getLeagueStandings, getTopScorers, makeManagerTransfer, upgradeStadium, setTrainingIntensity }}>
+    <GameContext.Provider value={{ state, initializeGame, initializeCareerMode, simulateWeek, simulateMultipleWeeks, advanceToNextSeason, getTeam, getPlayer, getLeagueStandings, getTopScorers, makeManagerTransfer, upgradeStadium, setTrainingIntensity, loanPlayerOut, loanPlayerIn }}>
       {children}
     </GameContext.Provider>
   );
