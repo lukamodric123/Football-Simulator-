@@ -283,6 +283,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     const newWeek = prev.week + 1;
     let updatedPlayers = { ...prev.players };
+    let cupNews: any[] = [];
+
+    // Advance cup rounds every 4 weeks
+    let updatedCups = prev.domesticCups;
+    if (newWeek % 4 === 0 && prev.domesticCups.length > 0) {
+      updatedCups = prev.domesticCups.map(cup => {
+        if (cup.round === 'complete') return cup;
+        const result = simulateCupRound(cup, prev.teams, updatedPlayers);
+        updatedPlayers = result.players;
+        cupNews.push(...result.news);
+        return result.cup;
+      });
+    }
+
 
     const newLeagues = prev.leagues.map(league => {
       const matchdayFixtures = league.fixtures.filter(f => f.matchday === league.currentMatchday && !f.played);
