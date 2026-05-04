@@ -68,6 +68,9 @@ const initialState: GameState = {
   greatestTeamHistory: [],
   clubDynastyTracker: {},
   managerLegacy: [],
+  domesticCups: [],
+  domesticCupHistory: [],
+  loanDeals: [],
 };
 
 function buildLeague(leagueDef: typeof LEAGUES[0], teams: Record<string, Team>, players: Record<string, Player>) {
