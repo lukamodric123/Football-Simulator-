@@ -345,6 +345,8 @@ const Dashboard: React.FC = () => {
             {tab === 'revenue' && <RevenuePanel />}
 
             {tab === 'loans' && <LoanPanel onPlayerClick={handlePlayerClick} />}
+          </div>
+        </div>
 
         {/* Right Sidebar */}
         <div className="space-y-4">
