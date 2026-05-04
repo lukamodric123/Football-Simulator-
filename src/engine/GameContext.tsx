@@ -188,6 +188,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       greatestTeamHistory: [],
       clubDynastyTracker: {},
       managerLegacy: [],
+      domesticCups: initialCups,
+      domesticCupHistory: [],
+      loanDeals: [],
     });
   }, []);
 
