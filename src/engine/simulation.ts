@@ -18,6 +18,7 @@ export function simulateMatch(
   awayTeam: Team,
   players: Record<string, Player>
 ): { fixture: Fixture; updatedPlayers: Record<string, Player> } {
+  const isDerby = !!homeTeam.rivals?.includes(awayTeam.id);
   const homeRating = getTeamOverall(homeTeam);
   const awayRating = getTeamOverall(awayTeam);
 
