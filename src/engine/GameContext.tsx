@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { GameState, League, Standing, Team, Player, Award, GOATEntry, AllTimeRecord, GameMode, SeasonRecord, Transfer, UCLTournament, CareerPlayer, StoryArc, TrainingIntensity, ManagerStatus } from './types';
+import { GameState, League, Standing, Team, Player, Award, GOATEntry, AllTimeRecord, GameMode, SeasonRecord, Transfer, UCLTournament, CareerPlayer, StoryArc, TrainingIntensity, ManagerStatus, DomesticCup, LoanDeal } from './types';
 import { LEAGUES } from './data';
 import { generateTeam, getPlayerOverall, agePlayer, shouldRetire, generateYouthPlayer, calculateGOATScore, generatePlayer, uid } from './generator';
 import { generateFixtures, simulateMatch } from './simulation';
@@ -9,6 +9,10 @@ import { generateUCL, simulateUCLGroupStage, simulateUCLKnockouts } from './ucl'
 import { simulateTransfers } from './transfers';
 import { generateSuperstars, getSuperstarsForTeam } from './superstars';
 import { generateBoardExpectations, evaluateManagerPerformance } from './managerExpanded';
+import { generateDomesticCups, simulateCupRound } from './domesticCup';
+import { assignRivalries } from './rivalries';
+import { calculateSeasonRevenue } from './sponsorship';
+import { createLoan, processLoanReturns } from './loans';
 
 interface GameContextType {
   state: GameState;
