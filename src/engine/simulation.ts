@@ -18,6 +18,7 @@ export function simulateMatch(
   awayTeam: Team,
   players: Record<string, Player>
 ): { fixture: Fixture; updatedPlayers: Record<string, Player> } {
+  const isDerby = !!homeTeam.rivals?.includes(awayTeam.id);
   const homeRating = getTeamOverall(homeTeam);
   const awayRating = getTeamOverall(awayTeam);
 
@@ -83,7 +84,7 @@ export function simulateMatch(
   // Cards
   const allPlayers = [...homeTeam.squad, ...awayTeam.squad].filter(p => !p.injured);
   for (const p of allPlayers) {
-    if (Math.random() < 0.08) {
+    if (Math.random() < (isDerby ? 0.14 : 0.08)) {
       events.push({
         minute: rand(1, 90),
         type: 'yellow_card',
@@ -91,7 +92,7 @@ export function simulateMatch(
         teamId: homeTeam.squad.includes(p) ? homeTeam.id : awayTeam.id,
       });
     }
-    if (Math.random() < 0.01) {
+    if (Math.random() < (isDerby ? 0.025 : 0.01)) {
       events.push({
         minute: rand(1, 90),
         type: 'red_card',

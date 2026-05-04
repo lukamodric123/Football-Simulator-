@@ -59,6 +59,9 @@ function createWCTeamAsTeam(wt: WorldCupTeam) {
     ffpWarning: false,
     trainingIntensity: 'medium' as const,
     wageTotal: 0,
+    rivals: [],
+    sponsors: [],
+    lastSeasonRevenue: { ticketSales: 0, merchandise: 0, sponsorships: 0, prizeMoney: 0, transfers: 0, total: 0 },
   };
 }
 

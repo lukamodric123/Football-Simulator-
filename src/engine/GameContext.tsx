@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { GameState, League, Standing, Team, Player, Award, GOATEntry, AllTimeRecord, GameMode, SeasonRecord, Transfer, UCLTournament, CareerPlayer, StoryArc, TrainingIntensity, ManagerStatus } from './types';
+import { GameState, League, Standing, Team, Player, Award, GOATEntry, AllTimeRecord, GameMode, SeasonRecord, Transfer, UCLTournament, CareerPlayer, StoryArc, TrainingIntensity, ManagerStatus, DomesticCup, LoanDeal } from './types';
 import { LEAGUES } from './data';
 import { generateTeam, getPlayerOverall, agePlayer, shouldRetire, generateYouthPlayer, calculateGOATScore, generatePlayer, uid } from './generator';
 import { generateFixtures, simulateMatch } from './simulation';
@@ -9,6 +9,10 @@ import { generateUCL, simulateUCLGroupStage, simulateUCLKnockouts } from './ucl'
 import { simulateTransfers } from './transfers';
 import { generateSuperstars, getSuperstarsForTeam } from './superstars';
 import { generateBoardExpectations, evaluateManagerPerformance } from './managerExpanded';
+import { generateDomesticCups, simulateCupRound } from './domesticCup';
+import { assignRivalries } from './rivalries';
+import { calculateSeasonRevenue } from './sponsorship';
+import { createLoan, processLoanReturns } from './loans';
 
 interface GameContextType {
   state: GameState;
@@ -24,6 +28,8 @@ interface GameContextType {
   makeManagerTransfer: (playerId: string, fee: number, wage: number, contractYears: number) => { success: boolean; message: string };
   upgradeStadium: (teamId: string) => { success: boolean; message: string };
   setTrainingIntensity: (teamId: string, intensity: TrainingIntensity) => void;
+  loanPlayerOut: (playerId: string, toTeamId: string, weeks: number, buyOption: number) => { success: boolean; message: string };
+  loanPlayerIn: (playerId: string, weeks: number, buyOption: number) => { success: boolean; message: string };
 }
 
 const GameContext = createContext<GameContextType | null>(null);
@@ -68,6 +74,9 @@ const initialState: GameState = {
   greatestTeamHistory: [],
   clubDynastyTracker: {},
   managerLegacy: [],
+  domesticCups: [],
+  domesticCupHistory: [],
+  loanDeals: [],
 };
 
 function buildLeague(leagueDef: typeof LEAGUES[0], teams: Record<string, Team>, players: Record<string, Player>) {
@@ -126,6 +135,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // Assign rivalries
+    const teamsWithRivals = assignRivalries(teams, leagues);
+    Object.assign(teams, teamsWithRivals);
+
     // Generate manager status for manager mode
     const managerStatus: ManagerStatus | null = (mode === 'manager' && managedTeamId && teams[managedTeamId]) ? {
       approval: 60,
@@ -135,6 +148,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       boardExpectations: generateBoardExpectations(teams[managedTeamId], 1),
       warningIssued: false,
     } : null;
+
+    // Initial domestic cups
+    const initialCups = generateDomesticCups(1, leagues, teams);
 
     setState({
       ...initialState,
@@ -172,6 +188,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       greatestTeamHistory: [],
       clubDynastyTracker: {},
       managerLegacy: [],
+      domesticCups: initialCups,
+      domesticCupHistory: [],
+      loanDeals: [],
     });
   }, []);
 
@@ -264,6 +283,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     const newWeek = prev.week + 1;
     let updatedPlayers = { ...prev.players };
+    let cupNews: any[] = [];
+
+    // Advance cup rounds every 4 weeks
+    let updatedCups = prev.domesticCups;
+    if (newWeek % 4 === 0 && prev.domesticCups.length > 0) {
+      updatedCups = prev.domesticCups.map(cup => {
+        if (cup.round === 'complete') return cup;
+        const result = simulateCupRound(cup, prev.teams, updatedPlayers);
+        updatedPlayers = result.players;
+        cupNews.push(...result.news);
+        return result.cup;
+      });
+    }
+
 
     const newLeagues = prev.leagues.map(league => {
       const matchdayFixtures = league.fixtures.filter(f => f.matchday === league.currentMatchday && !f.played);
@@ -322,7 +355,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       week: newWeek,
       leagues: newLeagues,
       players: updatedPlayers,
-      news: [...weekNews, ...prev.news].slice(0, 200),
+      domesticCups: updatedCups,
+      news: [...cupNews, ...weekNews, ...prev.news].slice(0, 200),
       phase: allDone ? 'end_season' : 'in_season',
     };
   };
@@ -910,6 +944,60 @@ export function GameProvider({ children }: { children: ReactNode }) {
       // Manager legacy
       const managerLegacy = [...prev.managerLegacy];
 
+      // --- DOMESTIC CUPS: log winners, give trophy + revenue, generate next season's cups ---
+      const domesticCupHistory = [...prev.domesticCupHistory];
+      const cupRevenueByTeam: Record<string, number> = {};
+      for (const cup of prev.domesticCups) {
+        if (cup.winnerTeamId && updatedTeams[cup.winnerTeamId]) {
+          const winner = updatedTeams[cup.winnerTeamId];
+          const runnerUp = cup.runnerUpTeamId && updatedTeams[cup.runnerUpTeamId];
+          updatedTeams[cup.winnerTeamId] = { ...winner, titles: winner.titles + 1, reputation: Math.min(99, winner.reputation + 1) };
+          for (const p of winner.squad) {
+            if (updatedPlayers[p.id]) {
+              updatedPlayers[p.id] = { ...updatedPlayers[p.id], trophies: updatedPlayers[p.id].trophies + 1 };
+            }
+          }
+          cupRevenueByTeam[cup.winnerTeamId] = (cupRevenueByTeam[cup.winnerTeamId] || 0) + 25;
+          domesticCupHistory.push({
+            season: prev.season,
+            leagueId: cup.leagueId,
+            cupName: cup.name,
+            winnerTeamId: cup.winnerTeamId,
+            winnerName: winner.name,
+            runnerUpName: runnerUp ? runnerUp.name : '—',
+          });
+        }
+      }
+      const newCups = generateDomesticCups(newSeason, readyLeagues, updatedTeams);
+
+      // --- LOAN RETURNS ---
+      const loanResult = processLoanReturns(updatedTeams, updatedPlayers, prev.loanDeals);
+      updatedTeams = loanResult.teams;
+      updatedPlayers = loanResult.players;
+      const remainingLoans = loanResult.loans;
+
+      // --- SPONSORSHIP & REVENUE ---
+      for (const tId of Object.keys(updatedTeams)) {
+        const t = updatedTeams[tId];
+        const lg = newLeagues.find(l => l.teams.includes(tId));
+        let pos = 10, size = 20;
+        if (lg) {
+          const sorted = [...lg.standings].sort((a, b) => b.points - a.points);
+          pos = sorted.findIndex(s => s.teamId === tId) + 1;
+          size = sorted.length;
+        }
+        const champId = lg ? [...lg.standings].sort((a, b) => b.points - a.points)[0]?.teamId : null;
+        const wonLeague = champId === tId;
+        const wonCup = prev.domesticCups.some(c => c.winnerTeamId === tId);
+        const wonUcl = ucl.winnerTeamId === tId;
+        const rev = calculateSeasonRevenue(t, pos, size, wonCup, wonLeague, wonUcl);
+        updatedTeams[tId] = {
+          ...t,
+          budget: Math.round(t.budget + rev.total - (t.wageTotal || 0) * 0.4),
+          lastSeasonRevenue: rev,
+        };
+      }
+
       return {
         ...prev,
         season: newSeason,
@@ -941,6 +1029,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
         greatestTeamHistory,
         clubDynastyTracker,
         managerLegacy,
+        domesticCups: newCups,
+        domesticCupHistory,
+        loanDeals: remainingLoans,
       };
     });
   }, []);
@@ -1101,8 +1192,43 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const loanPlayerOut = useCallback((playerId: string, toTeamId: string, weeks: number, buyOption: number) => {
+    const managedId = state.managedTeamId;
+    if (!managedId) return { success: false, message: 'No managed team.' };
+    const result = createLoan(state.teams, state.players, playerId, managedId, toTeamId, weeks, buyOption, state.season);
+    if (!result.loan) return { success: false, message: result.message };
+    setState(prev => ({
+      ...prev,
+      teams: result.teams,
+      players: result.players,
+      loanDeals: [...prev.loanDeals, result.loan!],
+      news: [{ id: `loan-${Date.now()}`, headline: `📤 LOAN OUT: ${result.loan!.playerName} joins ${result.loan!.toTeamName} on loan${buyOption > 0 ? ` (€${buyOption}M buy option)` : ''}.`, body: '', category: 'transfer' as const, week: prev.week, season: prev.season, importance: 3 }, ...prev.news].slice(0, 300),
+    }));
+    return { success: true, message: result.message };
+  }, [state.managedTeamId, state.teams, state.players, state.season]);
+
+  const loanPlayerIn = useCallback((playerId: string, weeks: number, buyOption: number) => {
+    const managedId = state.managedTeamId;
+    if (!managedId) return { success: false, message: 'No managed team.' };
+    let fromTeamId = '';
+    for (const [tid, team] of Object.entries(state.teams)) {
+      if (team.squad.some(p => p.id === playerId)) { fromTeamId = tid; break; }
+    }
+    if (!fromTeamId) return { success: false, message: 'Player not found at any team.' };
+    const result = createLoan(state.teams, state.players, playerId, fromTeamId, managedId, weeks, buyOption, state.season);
+    if (!result.loan) return { success: false, message: result.message };
+    setState(prev => ({
+      ...prev,
+      teams: result.teams,
+      players: result.players,
+      loanDeals: [...prev.loanDeals, result.loan!],
+      news: [{ id: `loan-${Date.now()}`, headline: `📥 LOAN IN: ${result.loan!.playerName} joins ${result.loan!.toTeamName} on loan from ${result.loan!.fromTeamName}.`, body: '', category: 'transfer' as const, week: prev.week, season: prev.season, importance: 3 }, ...prev.news].slice(0, 300),
+    }));
+    return { success: true, message: result.message };
+  }, [state.managedTeamId, state.teams, state.players, state.season]);
+
   return (
-    <GameContext.Provider value={{ state, initializeGame, initializeCareerMode, simulateWeek, simulateMultipleWeeks, advanceToNextSeason, getTeam, getPlayer, getLeagueStandings, getTopScorers, makeManagerTransfer, upgradeStadium, setTrainingIntensity }}>
+    <GameContext.Provider value={{ state, initializeGame, initializeCareerMode, simulateWeek, simulateMultipleWeeks, advanceToNextSeason, getTeam, getPlayer, getLeagueStandings, getTopScorers, makeManagerTransfer, upgradeStadium, setTrainingIntensity, loanPlayerOut, loanPlayerIn }}>
       {children}
     </GameContext.Provider>
   );
