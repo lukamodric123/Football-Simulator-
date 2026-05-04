@@ -135,6 +135,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // Assign rivalries
+    const teamsWithRivals = assignRivalries(teams, leagues);
+    Object.assign(teams, teamsWithRivals);
+
     // Generate manager status for manager mode
     const managerStatus: ManagerStatus | null = (mode === 'manager' && managedTeamId && teams[managedTeamId]) ? {
       approval: 60,
@@ -144,6 +148,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       boardExpectations: generateBoardExpectations(teams[managedTeamId], 1),
       warningIssued: false,
     } : null;
+
+    // Initial domestic cups
+    const initialCups = generateDomesticCups(1, leagues, teams);
 
     setState({
       ...initialState,
