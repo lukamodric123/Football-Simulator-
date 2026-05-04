@@ -28,6 +28,8 @@ interface GameContextType {
   makeManagerTransfer: (playerId: string, fee: number, wage: number, contractYears: number) => { success: boolean; message: string };
   upgradeStadium: (teamId: string) => { success: boolean; message: string };
   setTrainingIntensity: (teamId: string, intensity: TrainingIntensity) => void;
+  loanPlayerOut: (playerId: string, toTeamId: string, weeks: number, buyOption: number) => { success: boolean; message: string };
+  loanPlayerIn: (playerId: string, weeks: number, buyOption: number) => { success: boolean; message: string };
 }
 
 const GameContext = createContext<GameContextType | null>(null);
